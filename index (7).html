@@ -1,0 +1,1828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI-Native SDLC Journey — M&G Delivery Engine</title>
+<style>
+/* === RESET & BASE === */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{font-family:Arial,Helvetica,sans-serif;background:#0a0a10;height:100vh;overflow:hidden;display:flex;flex-direction:column;color:#1a1a1a}
+
+/* === DESIGN TOKENS === */
+:root{
+  --acn:#A100FF;
+  --acn-dk:#7B00BF;
+  --acn-dp:#460073;
+  --acn-lt:rgba(161,0,255,0.08);
+  --acn-border:rgba(161,0,255,0.18);
+  --surface:#ffffff;
+  --surface-2:#FAFAFA;
+  --surface-3:#F4F4F4;
+  --border-subtle:rgba(0,0,0,0.07);
+  --border:rgba(0,0,0,0.12);
+  --text-primary:#0d0d0d;
+  --text-secondary:#4a4a4a;
+  --text-muted:#8a8a9a;
+  --text-faint:#b8b8c8;
+  --green:#00875A;
+  --green-lt:rgba(0,135,90,0.08);
+  --green-border:rgba(0,135,90,0.18);
+  --amber:#a05000;
+  --amber-lt:rgba(160,80,0,0.07);
+  --amber-border:rgba(160,80,0,0.18);
+  --red:#c80028;
+  --red-lt:rgba(200,0,40,0.06);
+  --red-border:rgba(200,0,40,0.16);
+  --blue:#0052CC;
+  --blue-lt:rgba(0,82,204,0.07);
+  --blue-border:rgba(0,82,204,0.16);
+  --teal:#007a70;
+  --teal-lt:rgba(0,122,112,0.07);
+  --radius-sm:6px;
+  --radius:10px;
+  --radius-lg:14px;
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.07),0 1px 2px rgba(0,0,0,0.04);
+  --shadow:0 2px 8px rgba(0,0,0,0.08),0 1px 3px rgba(0,0,0,0.04);
+  --shadow-md:0 4px 16px rgba(0,0,0,0.10),0 2px 6px rgba(0,0,0,0.05);
+  --shadow-lg:0 8px 32px rgba(0,0,0,0.12),0 4px 12px rgba(0,0,0,0.06);
+}
+
+/* === TOPBAR === */
+.topbar{
+  height:44px;
+  background:rgba(10,10,16,0.96);
+  backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  display:flex;
+  align-items:center;
+  padding:0 20px;
+  gap:0;
+  flex-shrink:0;
+  z-index:100;
+}
+.topbar-brand{display:flex;align-items:center;gap:10px;padding-right:16px;border-right:1px solid rgba(255,255,255,0.08)}
+.topbar-brand svg{flex-shrink:0}
+.topbar-title{font-size:11px;font-weight:700;color:rgba(255,255,255,0.8);letter-spacing:0.04em;text-transform:uppercase}
+.topbar-sub{font-size:10px;color:var(--acn);font-weight:600;letter-spacing:0.02em}
+.topbar-sep{width:1px;height:20px;background:rgba(255,255,255,0.06);margin:0 16px}
+
+/* === STEP NAV === */
+.step-nav{display:flex;align-items:center;gap:2px;flex:1;padding:0 8px}
+.step-btn{
+  display:flex;align-items:center;gap:5px;
+  padding:5px 9px;
+  border-radius:var(--radius-sm);
+  border:none;background:transparent;cursor:default;
+  transition:all 0.15s;
+  color:rgba(255,255,255,0.25);
+  font-family:Arial,Helvetica,sans-serif;
+}
+.step-btn.visited{cursor:pointer;color:rgba(255,255,255,0.5)}
+.step-btn.visited:hover{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.7)}
+.step-btn.active{background:rgba(161,0,255,0.18);color:#fff;cursor:default}
+.step-dot{
+  width:16px;height:16px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:8px;font-weight:700;flex-shrink:0;
+  background:rgba(255,255,255,0.06);
+  color:rgba(255,255,255,0.3);
+}
+.step-btn.visited .step-dot{background:rgba(161,0,255,0.25);color:var(--acn)}
+.step-btn.active .step-dot{background:var(--acn);color:#fff}
+.step-label{font-size:9.5px;font-weight:600;white-space:nowrap;letter-spacing:0.02em}
+.step-check{font-size:8px;color:var(--acn)}
+
+/* === PROGRESS BAR === */
+.progress-track{height:2px;background:rgba(255,255,255,0.05);flex-shrink:0}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--acn),#c060ff);transition:width 0.5s cubic-bezier(0.4,0,0.2,1)}
+
+/* === STAGE === */
+.stage{flex:1;overflow:hidden;position:relative;background:var(--surface-2)}
+.step-panel{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;
+  opacity:0;pointer-events:none;transition:opacity 0.2s;
+}
+.step-panel.active{opacity:1;pointer-events:all}
+
+/* === STEP LAYOUT === */
+.step-header{
+  padding:13px 24px 11px;
+  background:var(--surface);
+  border-bottom:1px solid var(--border-subtle);
+  flex-shrink:0;
+}
+.step-eyebrow{
+  font-size:9px;font-weight:700;text-transform:uppercase;
+  letter-spacing:0.24em;color:var(--acn);margin-bottom:4px;
+}
+.step-title{
+  font-family:'Arial Black',Arial,sans-serif;
+  font-size:15px;font-weight:900;color:var(--text-primary);
+  line-height:1.3;margin-bottom:3px;
+}
+.step-title em{font-style:normal;color:var(--acn)}
+.step-desc{font-size:10px;color:var(--text-secondary);line-height:1.5;max-width:920px}
+
+/* step-body: flex column, fills space between header+footer */
+.step-body{
+  flex:1;min-height:0;
+  padding:12px 18px 12px;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+/* Direct grid child of step-body always fills all available height */
+.step-body > .sg{flex:1;min-height:0;height:100%}
+
+.step-footer{
+  height:46px;padding:0 24px;
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--surface);
+  border-top:1px solid var(--border-subtle);
+  flex-shrink:0;
+}
+
+/* === BUTTONS === */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 16px;border-radius:var(--radius-sm);
+  font-family:Arial,Helvetica,sans-serif;
+  font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:0.1em;
+  border:none;cursor:pointer;transition:all 0.15s;
+  white-space:nowrap;flex-shrink:0;
+}
+.btn-primary{background:var(--acn);color:#fff}
+.btn-primary:hover{background:var(--acn-dk);transform:translateY(-1px);box-shadow:0 4px 12px rgba(161,0,255,0.3)}
+.btn-primary:disabled{background:rgba(161,0,255,0.3);cursor:not-allowed;transform:none;box-shadow:none}
+.btn-ghost{background:transparent;color:var(--acn-dk);border:1px solid var(--acn-border)}
+.btn-ghost:hover{background:var(--acn-lt)}
+.btn-ghost.dim{color:var(--text-muted);border-color:var(--border);pointer-events:none}
+
+/* === CARDS ===
+   .card = base white surface
+   .card-p = standard 14px padding (add to .card)
+   .card-sm = compact 10px/12px padding
+   Color modifiers: .card-purple, .card-green, .card-amber, .card-red, .card-blue
+   All modifiers include border-radius so they work standalone too.
+*/
+.card{
+  background:var(--surface);
+  border:1px solid var(--border-subtle);
+  border-radius:var(--radius);
+}
+.card-p{padding:14px}
+.card-sm{padding:10px 12px}
+.card-purple{
+  background:linear-gradient(135deg,rgba(161,0,255,0.05),rgba(161,0,255,0.02));
+  border:1px solid var(--acn-border);
+  border-radius:var(--radius);
+}
+.card-green{background:var(--green-lt);border:1px solid var(--green-border);border-radius:var(--radius)}
+.card-amber{background:var(--amber-lt);border:1px solid var(--amber-border);border-radius:var(--radius)}
+.card-red{background:var(--red-lt);border:1px solid var(--red-border);border-radius:var(--radius)}
+.card-blue{background:var(--blue-lt);border:1px solid var(--blue-border);border-radius:var(--radius)}
+.card-dark{background:rgba(10,8,20,0.96);border:1px solid rgba(161,0,255,0.15);border-radius:var(--radius)}
+
+/* === GRID LAYOUTS ===
+   .sg = "step grid" — the master grid that fills step-body height
+   All grids use align-items:stretch so all cells reach the same height.
+*/
+/* === GRID SYSTEM ===
+   .sg is the step grid — direct child of .step-body.
+   step-body is a flex-column, so .sg gets flex:1 (fills remaining height).
+   Grid rows use grid-template-rows:1fr so the single row fills grid height.
+   Grid cells then stretch to fill that row.
+   Column wrappers (.col / .col-scroll) get overflow control inside cells.
+*/
+.step-body > .sg{
+  flex:1;
+  min-height:0;
+  display:grid;
+  grid-template-rows:1fr;   /* single row fills all available height */
+  align-items:stretch;
+  gap:14px;
+}
+/* column-count variants */
+.step-body > .sg.c2  {grid-template-columns:1fr 1fr}
+.step-body > .sg.c3  {grid-template-columns:1fr 1fr 1fr}
+.step-body > .sg.c53 {grid-template-columns:5fr 3fr}
+.step-body > .sg.c32 {grid-template-columns:3fr 2fr}
+.step-body > .sg.c23 {grid-template-columns:2fr 3fr}
+.step-body > .sg.c121{grid-template-columns:1fr 2fr 1fr}
+/* standalone .sg not inside step-body (e.g. nested grids) */
+.sg{display:grid;align-items:stretch;gap:12px}
+.sg.c2  {grid-template-columns:1fr 1fr}
+.sg.c3  {grid-template-columns:1fr 1fr 1fr}
+
+/* === COLUMN HELPERS ===
+   Direct child of a grid cell.
+   .col        = flex col, 10px gap, clips at cell boundary
+   .col-scroll = flex col, scrolls content if taller than cell
+   Both fill 100% of the grid cell height (grid gives them that).
+*/
+.col{
+  display:flex;flex-direction:column;
+  gap:10px;overflow:hidden;
+  height:100%;  /* fill the grid cell */
+}
+.col-scroll{
+  display:flex;flex-direction:column;
+  gap:10px;overflow-y:auto;overflow-x:hidden;
+  padding-right:2px;
+  height:100%;  /* fill the grid cell */
+}
+/* flex-1 inside a col fills remaining space in that column */
+.flex-1{flex:1;min-height:0;overflow:hidden}
+/* flex-1 + scrollable */
+.flex-1.scroll{overflow-y:auto;overflow-x:hidden;padding-right:2px}
+
+/* === MISC LAYOUT === */
+.h-full{height:100%}
+.flex-col{display:flex;flex-direction:column}
+.gap-2{gap:8px!important}
+.gap-3{gap:10px!important}
+.flex-1{flex:1;min-height:0}
+.min-h-0{min-height:0}
+.overflow-a{overflow-y:auto;padding-right:2px}
+/* flex helpers used in JS templates */
+.flex{display:flex}
+.flex-wrap{flex-wrap:wrap}
+.items-start{align-items:flex-start}
+.items-center{align-items:center}
+.items-end{align-items:flex-end}
+.justify-between{justify-content:space-between}
+.justify-center{justify-content:center}
+.ml-auto{margin-left:auto}
+.mt-auto{margin-top:auto}
+.w-full{width:100%}
+.shrink-0{flex-shrink:0}
+.relative{position:relative}
+/* gap helpers for flex rows */
+.gap-1{gap:4px}.gap-2{gap:8px!important}.gap-3{gap:10px!important}.gap-4{gap:14px}
+/* margin/padding shortcuts */
+.mt-1{margin-top:4px}.mt-2{margin-top:8px}.mt-3{margin-top:12px}.mt-4{margin-top:16px}
+.mb-1{margin-bottom:4px}.mb-2{margin-bottom:8px}.mb-3{margin-bottom:12px}.mb-4{margin-bottom:16px}
+.mb-0{margin-bottom:0}
+.p-2{padding:8px}.p-3{padding:12px}
+/* text */
+.italic{font-style:italic}
+.text-center{text-align:center}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* === LABEL === */
+.label{
+  font-size:9px;font-weight:700;text-transform:uppercase;
+  letter-spacing:0.2em;color:var(--acn);margin-bottom:6px;
+  flex-shrink:0;
+}
+.label-muted{color:var(--text-muted)}
+
+/* === TAGS === */
+.tag{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:2px 7px;border-radius:4px;border:1px solid;
+  font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;
+}
+.tag-purple{color:var(--acn-dk);background:rgba(161,0,255,0.07);border-color:var(--acn-border)}
+.tag-blue{color:#004299;background:var(--blue-lt);border-color:var(--blue-border)}
+.tag-green{color:var(--green);background:var(--green-lt);border-color:var(--green-border)}
+.tag-amber{color:var(--amber);background:var(--amber-lt);border-color:var(--amber-border)}
+.tag-red{color:var(--red);background:var(--red-lt);border-color:var(--red-border)}
+.tag-teal{color:var(--teal);background:var(--teal-lt);border-color:rgba(0,122,112,0.18)}
+.tag-gray{color:var(--text-muted);background:rgba(0,0,0,0.04);border-color:var(--border)}
+
+/* === STATUS INDICATORS === */
+.status-row{
+  display:flex;align-items:flex-start;gap:8px;
+  padding:8px 10px;border-radius:var(--radius-sm);
+  border:1px solid;margin-bottom:6px;
+}
+.status-icon{font-size:11px;flex-shrink:0;margin-top:1px;width:14px;text-align:center}
+.status-body{flex:1;min-width:0}
+.status-label{font-size:10px;font-weight:600;color:var(--text-primary)}
+.status-note{font-size:9px;color:var(--text-secondary);margin-top:2px;line-height:1.45}
+.st-pass{background:var(--green-lt);border-color:var(--green-border)}
+.st-pass .status-icon{color:var(--green)}
+.st-warn{background:var(--amber-lt);border-color:var(--amber-border)}
+.st-warn .status-icon{color:var(--amber)}
+.st-fail{background:var(--red-lt);border-color:var(--red-border)}
+.st-fail .status-icon{color:var(--red)}
+.st-idle{background:var(--surface-3);border-color:var(--border)}
+.st-idle .status-icon{color:var(--text-faint)}
+
+/* === CODE BLOCK === */
+.code-block{
+  background:rgba(8,6,18,0.96);
+  border:1px solid rgba(161,0,255,0.14);
+  border-radius:var(--radius-sm);
+  padding:12px 14px;
+  font-family:Menlo,Monaco,Consolas,monospace;
+  font-size:9.5px;color:#d8cff0;
+  line-height:1.6;overflow:auto;
+}
+.code-topbar{
+  display:flex;align-items:center;gap:5px;
+  padding:6px 12px;
+  background:rgba(8,6,18,0.98);
+  border-radius:var(--radius-sm) var(--radius-sm) 0 0;
+  border:1px solid rgba(161,0,255,0.14);
+  border-bottom:1px solid rgba(255,255,255,0.05);
+}
+.code-topbar+.code-block{border-radius:0 0 var(--radius-sm) var(--radius-sm);border-top:none}
+.dot-r{width:8px;height:8px;border-radius:50%;background:#ff5f57}
+.dot-y{width:8px;height:8px;border-radius:50%;background:#febc2e}
+.dot-g{width:8px;height:8px;border-radius:50%;background:#28c840}
+.code-label{font-size:9px;color:rgba(255,255,255,0.3);font-family:Menlo,Monaco,monospace;margin-left:6px}
+
+/* === TYPOGRAPHY UTILS === */
+.t-primary{color:var(--text-primary)}
+.t-secondary{color:var(--text-secondary)}
+.t-muted{color:var(--text-muted)}
+.t-faint{color:var(--text-faint)}
+.t-acn{color:var(--acn)}
+.t-acndk{color:var(--acn-dk)}
+.t-green{color:var(--green)}
+.t-amber{color:var(--amber)}
+.t-red{color:var(--red)}
+.t-blue{color:var(--blue)}
+.fw-black{font-family:'Arial Black',Arial,sans-serif;font-weight:900}
+.fw-bold{font-weight:700}
+.fw-med{font-weight:600}
+.fs-8{font-size:8px}
+.fs-9{font-size:9px}
+.fs-10{font-size:10px}
+.fs-11{font-size:11px}
+.fs-12{font-size:12px}
+.fs-13{font-size:13px}
+.upper{text-transform:uppercase;letter-spacing:0.1em}
+
+/* === LAYOUT HELPERS === */
+.flex{display:flex}
+.items-center{align-items:center}
+.items-start{align-items:flex-start}
+.justify-between{justify-content:space-between}
+.mt-1{margin-top:4px}.mt-2{margin-top:8px}.mt-3{margin-top:10px}.mt-4{margin-top:14px}
+.mb-1{margin-bottom:4px}.mb-2{margin-bottom:8px}.mb-3{margin-bottom:10px}.mb-4{margin-bottom:14px}
+.ml-auto{margin-left:auto}
+.w-full{width:100%}
+.shrink-0{flex-shrink:0}
+.relative{position:relative}
+
+/* === ANIMATIONS === */
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideRight{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes pulseGlow{0%,100%{box-shadow:0 0 0 0 rgba(161,0,255,0.15)}50%{box-shadow:0 0 0 6px rgba(161,0,255,0)}}
+
+.anim-up{animation:fadeUp 0.35s ease forwards}
+.anim-in{animation:fadeIn 0.25s ease forwards}
+.anim-right{animation:slideRight 0.3s ease forwards}
+.spin{animation:spin 0.8s linear infinite}
+.blink::after{content:'|';color:var(--acn);animation:blink 1s step-end infinite}
+.d1{animation-delay:0.08s;opacity:0}
+.d2{animation-delay:0.16s;opacity:0}
+.d3{animation-delay:0.24s;opacity:0}
+.d4{animation-delay:0.32s;opacity:0}
+.d5{animation-delay:0.40s;opacity:0}
+.d6{animation-delay:0.48s;opacity:0}
+
+/* === SECTION DIVIDER LINE === */
+.rule{height:1px;background:var(--border-subtle);margin:10px 0}
+
+/* === JIRA STEP === */
+.jira-header-bar{
+  background:#0052CC;border-radius:var(--radius) var(--radius) 0 0;
+  padding:8px 14px;display:flex;align-items:center;gap:8px;
+  flex-shrink:0;
+}
+.jira-content{
+  background:var(--surface);
+  border:1px solid rgba(0,82,204,0.12);border-top:none;
+  border-radius:0 0 var(--radius) var(--radius);
+  padding:14px;
+  flex:1;overflow-y:auto;
+}
+.ac-row{
+  display:flex;gap:8px;align-items:flex-start;
+  padding:7px 10px;border-radius:var(--radius-sm);border:1px solid;
+  margin-bottom:5px;
+  transition:all 0.2s;
+}
+.ac-row.ok{background:var(--green-lt);border-color:var(--green-border)}
+.ac-row.warn{background:var(--amber-lt);border-color:var(--amber-border)}
+.ac-id{font-size:9px;font-weight:700;flex-shrink:0;width:30px}
+.ac-text{font-size:10px;color:var(--text-secondary);line-height:1.45;flex:1}
+
+/* === MCP TOOL ROW === */
+.tool-row{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:9px 12px;
+  border-radius:var(--radius-sm);
+  background:var(--surface);
+  border:1px solid var(--border-subtle);
+  margin-bottom:5px;
+  transition:all 0.25s;
+}
+.tool-row.done{border-color:rgba(0,135,90,0.14)}
+.tool-status{width:18px;height:18px;flex-shrink:0;margin-top:1px}
+.spinner-circle{width:16px;height:16px;border-radius:50%;border:2px solid rgba(161,0,255,0.15);border-top-color:var(--acn);animation:spin 0.8s linear infinite}
+.check-circle{width:16px;height:16px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center}
+.idle-circle{width:16px;height:16px;border-radius:50%;border:1px solid var(--border);background:var(--surface-3)}
+.tool-body{flex:1;min-width:0}
+.tool-name{font-size:9.5px;font-family:Menlo,Monaco,monospace;color:var(--text-primary);font-weight:600;margin-bottom:2px}
+.tool-arg{font-size:8.5px;font-family:Menlo,Monaco,monospace;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tool-result{font-size:8.5px;font-family:Menlo,Monaco,monospace;color:var(--green);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* === LAYER SELECTOR === */
+.layer-btn{
+  width:100%;text-align:left;padding:10px 12px;border-radius:var(--radius-sm);
+  border:1px solid transparent;background:transparent;cursor:pointer;
+  transition:all 0.15s;font-family:Arial,Helvetica,sans-serif;
+  display:block;
+}
+.layer-btn:hover{background:var(--surface-3);border-color:var(--border)}
+.layer-btn.active{background:var(--surface);border-color:var(--acn-border);box-shadow:var(--shadow-sm)}
+.layer-icon-ring{
+  width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.connector-line{width:2px;height:8px;margin:1px auto;border-radius:1px}
+
+/* === SPEC EDITOR === */
+.spec-line{
+  padding:8px 12px;border-radius:var(--radius-sm);
+  border-left:2.5px solid transparent;cursor:pointer;transition:all 0.15s;
+}
+.spec-line:hover{background:rgba(255,255,255,0.04)}
+.spec-line.active{border-left-color:var(--acn)}
+.spec-section-title{font-size:10px;font-family:Menlo,Monaco,monospace;font-weight:700;margin-bottom:4px}
+.spec-body{font-size:9px;font-family:Menlo,Monaco,monospace;color:rgba(255,255,255,0.55);line-height:1.6;white-space:pre-wrap}
+.spec-body.highlight{color:rgba(255,255,255,0.82)}
+
+/* === AGENT CARDS === */
+.agent-card{
+  padding:12px;border-radius:var(--radius-sm);
+  background:var(--surface);border:1px solid var(--border-subtle);
+  cursor:pointer;transition:all 0.15s;
+}
+.agent-card:hover{border-color:var(--border);box-shadow:var(--shadow-sm)}
+.agent-card.active{border-color:var(--acn-border);box-shadow:var(--shadow-sm)}
+.progress-bar{height:3px;background:var(--surface-3);border-radius:2px;overflow:hidden;margin-top:7px}
+.progress-fill-sm{height:100%;border-radius:2px;transition:width 0.2s ease}
+
+/* === REVIEW GATE === */
+.gate-btn{
+  width:100%;text-align:left;padding:11px 12px;border-radius:var(--radius-sm);
+  border:1px solid var(--border-subtle);background:var(--surface);cursor:pointer;
+  transition:all 0.15s;font-family:Arial,Helvetica,sans-serif;
+}
+.gate-btn:hover{border-color:var(--border);box-shadow:var(--shadow-sm)}
+.gate-btn.active{border-color:var(--acn-border);box-shadow:var(--shadow-sm)}
+.gate-btn.done-gate{border-color:var(--green-border);background:var(--green-lt)}
+
+/* === FAULT SCENARIO === */
+.fault-btn{
+  width:100%;text-align:left;padding:10px 12px;border-radius:var(--radius-sm);
+  border:1px solid var(--border-subtle);background:var(--surface);cursor:pointer;
+  transition:all 0.15s;font-family:Arial,Helvetica,sans-serif;
+  margin-bottom:6px;
+}
+.fault-btn:hover{box-shadow:var(--shadow-sm)}
+.fault-btn.active{box-shadow:var(--shadow-sm)}
+
+/* === CONFLUENCE DOC === */
+.conf-h1{font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:8px}
+.conf-h2{font-size:11px;font-weight:700;color:var(--text-primary);margin:12px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border-subtle)}
+.conf-p{font-size:10px;color:var(--text-secondary);line-height:1.6;margin-bottom:8px}
+.conf-table{width:100%;border-collapse:collapse;font-size:9.5px;margin-bottom:12px}
+.conf-table th{background:var(--surface-3);padding:6px 10px;text-align:left;font-weight:700;color:var(--text-muted);font-size:8.5px;text-transform:uppercase;letter-spacing:0.06em;border:1px solid var(--border-subtle)}
+.conf-table td{padding:6px 10px;border:1px solid var(--border-subtle);color:var(--text-secondary);line-height:1.4}
+.conf-table td:first-child{font-weight:600;color:var(--text-primary)}
+.conf-badge{display:inline-flex;padding:2px 7px;border-radius:4px;font-size:8.5px;font-weight:700}
+.cb-green{background:var(--green-lt);color:var(--green);border:1px solid var(--green-border)}
+.cb-blue{background:var(--blue-lt);color:var(--blue);border:1px solid var(--blue-border)}
+.cb-purple{background:var(--acn-lt);color:var(--acn-dk);border:1px solid var(--acn-border)}
+.conf-info-box{background:var(--blue-lt);border-left:3px solid var(--blue);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:8px 12px;margin-bottom:10px;font-size:10px;color:var(--text-secondary)}
+.conf-success-box{background:var(--green-lt);border-left:3px solid var(--green);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:8px 12px;margin-bottom:10px;font-size:10px;color:var(--text-secondary)}
+
+/* === SUCCESS SCREEN === */
+.metric-big{font-size:28px;font-family:'Arial Black',Arial,sans-serif;font-weight:900;line-height:1}
+.deploy-step{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 10px;border-radius:var(--radius-sm);
+  background:var(--green-lt);border:1px solid var(--green-border);
+  margin-bottom:4px;
+}
+
+/* === SCROLLBARS === */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(161,0,255,0.2);border-radius:2px}
+
+/* Cards in flex columns should not shrink below content height */
+.col > .card,
+.col > .card-purple,
+.col > .card-green,
+.col > .card-amber,
+.col > .card-red,
+.col > .card-blue {
+  flex-shrink:0;
+}
+/* Buttons in flex columns should not shrink */
+.col > .btn { flex-shrink:0; }
+/* Labels in flex columns should not shrink */
+.col > .label { flex-shrink:0; }
+
+/* flex-1 inside a col — take remaining space, clip overflow */
+.col > .flex-1 { flex:1; min-height:0; overflow:hidden; }
+.col > .flex-1.scroll { overflow-y:auto; overflow-x:hidden; padding-right:2px; }
+/* col-scroll is itself the scrollable container — its children are normal flow */
+.col-scroll > * { flex-shrink:0; }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar" id="topbar">
+  <!-- Accenture GT mark -->
+  <div class="topbar-brand">
+    <svg width="18" height="18" viewBox="0 0 32 32" fill="#A100FF">
+      <path d="M0 22.6L17.66 16.03L0 9.13V0L30.24 12.18V19.75L0 32V22.6Z"/>
+    </svg>
+    <div>
+      <div class="topbar-title">SF Delivery Engine</div>
+    </div>
+    <div style="width:1px;height:18px;background:rgba(255,255,255,0.08);margin:0 10px"></div>
+    <div class="topbar-sub">AI-Native Story Journey</div>
+  </div>
+
+  <!-- Step nav -->
+  <div class="step-nav" id="stepNav"></div>
+
+  <div style="font-size:9px;color:rgba(255,255,255,0.2);letter-spacing:0.1em;text-transform:uppercase;white-space:nowrap">
+    M&amp;G · Apr 2026
+  </div>
+</div>
+
+<!-- PROGRESS BAR -->
+<div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<!-- STAGE -->
+<div class="stage" id="stage"></div>
+
+<script>
+/* =========================================================
+   ICON SYSTEM (inline SVG strings)
+   ========================================================= */
+const Icons = {
+  check: `<svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="2,6 5,9 10,3"/></svg>`,
+  warn: `<svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 1L11 10H1Z"/><line x1="6" y1="5" x2="6" y2="7.5"/><circle cx="6" cy="9" r="0.6" fill="currentColor"/></svg>`,
+  x: `<svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg>`,
+  arrow_right: `<svg width="12" height="10" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="2" y1="6" x2="12" y2="6"/><polyline points="8,2 12,6 8,10"/></svg>`,
+  arrow_left: `<svg width="12" height="10" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="6" x2="2" y2="6"/><polyline points="6,2 2,6 6,10"/></svg>`,
+  jira: `<svg width="14" height="14" viewBox="0 0 32 32" fill="white"><path d="M15.85.78L8.07 8.56l4.68 4.68 3.1-3.1 7.6 7.6-7.6 7.6-3.1-3.1-4.68 4.68 7.78 7.78a1 1 0 001.42 0l11.55-11.56a1 1 0 000-1.41L17.27.78a1 1 0 00-1.42 0z"/><path d="M5.87 10.57L.78 15.66a1 1 0 000 1.42l5.09 5.09 4.68-4.68-2.5-2.5 2.5-2.5z"/></svg>`,
+  sf: `<svg width="14" height="14" viewBox="0 0 32 32" fill="white"><path d="M16 3C9 3 3 9 3 16s6 13 13 13 13-6 13-13S23 3 16 3zm0 22C11.03 25 7 20.97 7 16S11.03 7 16 7s9 4.03 9 9-4.03 9-9 9z"/><circle cx="16" cy="16" r="5" fill="white"/></svg>`,
+  file: `<svg width="12" height="12" viewBox="0 0 14 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 1H3a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V6L8 1z"/><polyline points="8,1 8,6 13,6"/></svg>`,
+  code_icon: `<svg width="12" height="10" viewBox="0 0 16 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="4,2 1,6 4,10"/><polyline points="12,2 15,6 12,10"/><line x1="9" y1="1" x2="7" y2="11"/></svg>`,
+  shield: `<svg width="12" height="13" viewBox="0 0 14 15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 1L2 3v5c0 3 2.5 5.5 5 6.5C14 13.5 12 8 12 8V3L7 1z"/></svg>`,
+  test: `<svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 1v5L2 12h10L9 6V1"/><line x1="4" y1="1" x2="10" y2="1"/></svg>`,
+  docs: `<svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="1" width="10" height="12" rx="1.5"/><line x1="4.5" y1="4.5" x2="9.5" y2="4.5"/><line x1="4.5" y1="7" x2="9.5" y2="7"/><line x1="4.5" y1="9.5" x2="7" y2="9.5"/></svg>`,
+  lock: `<svg width="11" height="12" viewBox="0 0 12 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="2" y="6" width="8" height="7" rx="1.5"/><path d="M4 6V4a2 2 0 014 0v2"/><circle cx="6" cy="9.5" r="1" fill="currentColor" stroke="none"/></svg>`,
+  rocket: `<svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 1c0 0 4 1 5 5-1 1-2 1-3 1L7 5c0-1 0-2 0-4z"/><path d="M9 7l-2 5-2-2 5-3z"/><path d="M4 9c-1 1-1 2-1 3 1 0 2 0 3-1"/></svg>`,
+  brain: `<svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 3C5 2 6 1 7 1s2 .5 2 1.5"/><path d="M5 3C4 3 2 4 2 6s1 3 3 3"/><path d="M9 3c1 0 3 1 3 3s-1 3-3 3"/><path d="M5 9v3M9 9v3M7 9v2"/><path d="M4 6h6"/></svg>`,
+  layers: `<svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><polyline points="1,5 7,2 13,5 7,8 1,5"/><polyline points="1,8 7,11 13,8"/></svg>`,
+  zap: `<svg width="11" height="13" viewBox="0 0 12 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="8,1 4,7 8,7 5,13"/></svg>`,
+  flag: `<svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="3" y1="1" x2="3" y2="13"/><path d="M3 1h8l-2 4 2 4H3"/></svg>`,
+  gt: `<svg width="9" height="9" viewBox="0 0 32 32" fill="currentColor"><path d="M0 22.6L17.66 16.03L0 9.13V0L30.24 12.18V19.75L0 32V22.6Z"/></svg>`
+};
+
+/* =========================================================
+   STEP DEFINITIONS
+   ========================================================= */
+const STEPS = [
+  { id:'jira',       label:'Story Validation',  short:'Jira'    },
+  { id:'mcp',        label:'MCP Handoff',        short:'MCP'     },
+  { id:'template',   label:'Context Layers',     short:'Layers'  },
+  { id:'ticket',     label:'Spec Generation',    short:'Spec'    },
+  { id:'build',      label:'Parallel Build',     short:'Build'   },
+  { id:'gates',      label:'Human Gates',        short:'Gates'   },
+  { id:'fault',      label:'Fault Paths',        short:'Faults'  },
+  { id:'confluence', label:'Auto-Publish Docs',  short:'Docs'    },
+  { id:'success',    label:'Deployed',           short:'Done'    },
+];
+
+/* =========================================================
+   STATE
+   ========================================================= */
+let currentStep = 'jira';
+let visitedSteps = new Set(['jira']);
+const stepState = {}; // per-step reactive state
+
+/* =========================================================
+   NAV RENDER
+   ========================================================= */
+function renderNav() {
+  const nav = document.getElementById('stepNav');
+  const idx = STEPS.findIndex(s => s.id === currentStep);
+  nav.innerHTML = STEPS.map((s, i) => {
+    const active = s.id === currentStep;
+    const visited = visitedSteps.has(s.id);
+    const past = i < idx;
+    let cls = 'step-btn';
+    if (active) cls += ' active';
+    else if (visited) cls += ' visited';
+    const numOrCheck = past
+      ? `<span style="color:var(--acn)">${Icons.check}</span>`
+      : (i + 1);
+    return `<button class="${cls}" onclick="visitedSteps.has('${s.id}') ? goTo('${s.id}') : null" data-id="${s.id}">
+      <span class="step-dot">${numOrCheck}</span>
+      <span class="step-label">${s.short}</span>
+    </button>`;
+  }).join(`<span style="color:rgba(255,255,255,0.1);font-size:10px;padding:0 1px">›</span>`);
+
+  // progress
+  const fill = (idx / (STEPS.length - 1)) * 100;
+  document.getElementById('progressFill').style.width = fill + '%';
+}
+
+function goTo(id) {
+  currentStep = id;
+  visitedSteps.add(id);
+  renderNav();
+  renderStage();
+}
+function next() {
+  const idx = STEPS.findIndex(s => s.id === currentStep);
+  if (idx < STEPS.length - 1) goTo(STEPS[idx + 1].id);
+}
+function prev() {
+  const idx = STEPS.findIndex(s => s.id === currentStep);
+  if (idx > 0) goTo(STEPS[idx - 1].id);
+}
+
+/* =========================================================
+   STEP FOOTER TEMPLATE
+   ========================================================= */
+function footer(prevLabel = '← Back', nextLabel = 'Continue', nextDisabled = false, isFirst = false, isLast = false) {
+  const prevBtn = isFirst
+    ? `<button class="btn btn-ghost dim">${Icons.arrow_left} &nbsp;</button>`
+    : `<button class="btn btn-ghost" onclick="prev()">${Icons.arrow_left} ${prevLabel}</button>`;
+  const nextBtn = isLast
+    ? `<button class="btn btn-primary" onclick="goTo('jira')">↺ &nbsp;Run Another Story</button>`
+    : `<button class="btn btn-primary" onclick="${nextDisabled ? '' : 'next()'}" ${nextDisabled ? 'disabled' : ''}>${nextLabel} &nbsp;${Icons.arrow_right}</button>`;
+  return `<div class="step-footer">${prevBtn}${nextBtn}</div>`;
+}
+
+/* =========================================================
+   STEP 1 — JIRA STORY VALIDATION
+   ========================================================= */
+function renderJira() {
+  if (!stepState.jira) stepState.jira = { phase: 'idle', fixes: new Set(), flagFixed: false };
+  const s = stepState.jira;
+
+  const acs = [
+    { id:'AC-1', text:'Given Case Priority = High → assigned to Complaints_L2 queue', ok: true },
+    { id:'AC-2', text:'Given Case Priority = Critical → Complaints_Escalation within 30s', ok: true },
+    { id:'AC-3', text:'Given bulk insert 200 Cases → all allocated within governor limits', ok: true },
+    { id:'AC-4', text: s.flagFixed
+        ? 'Given Priority changes to Critical → re-assigns automatically · Bulk 200 within limits'
+        : 'Given existing Case Priority changes to Critical → re-assigns automatically',
+      ok: s.flagFixed, warn: !s.flagFixed },
+  ];
+
+  const issues = [
+    { idx:0, label:'AC-4 missing governor limit NFR', fix:'Added: "Bulk 200 re-assignments within governor limits" to AC-4' },
+    { idx:1, label:'FLS requirements not specified', fix:'Added to Tech Notes: isAccessible() on Case.Priority, isUpdateable() on OwnerId' },
+  ];
+
+  const allFixed = s.fixes.size >= issues.length;
+  const approved = s.phase === 'approved';
+
+  let rhs = '';
+  if (s.phase === 'idle') {
+    rhs = `<div class="card card-p anim-in">
+      <div class="flex items-center gap-2 mb-3">
+        <div style="width:28px;height:28px;border-radius:7px;background:#0052CC;display:flex;align-items:center;justify-content:center;">${Icons.jira}</div>
+        <div>
+          <div class="fw-black fs-11 t-primary">Rovo Work Readiness Checker</div>
+          <div class="fs-9 t-muted">Validates story before AI pipeline entry</div>
+        </div>
+      </div>
+      <button class="btn btn-primary w-full" style="justify-content:center" onclick="rovoCheck()">
+        ${Icons.zap} &nbsp;Run Readiness Check
+      </button>
+    </div>`;
+  } else if (s.phase === 'checking') {
+    rhs = `<div class="card card-p anim-in">
+      <div class="label">Rovo is analysing…</div>
+      ${['Parsing story structure…','Checking AC completeness…','Validating NFR coverage…','Cross-referencing domain model…'].map((t,i) => `
+        <div class="flex items-center gap-2 fs-10 t-muted mb-2 anim-up d${i+1}">
+          <div class="spinner-circle" style="width:12px;height:12px;border-width:1.5px"></div>${t}
+        </div>`).join('')}
+    </div>`;
+  } else if ((s.phase === 'issues' || s.phase === 'fixing') && !allFixed) {
+    rhs = `
+    <div class="card card-p anim-in mb-2" style="border-color:var(--amber-border)">
+      <div class="flex items-center gap-2 mb-2">
+        <div style="color:var(--amber)">${Icons.warn}</div>
+        <div class="fw-black fs-11" style="color:var(--amber)">${issues.length - s.fixes.size} issue${issues.length - s.fixes.size > 1 ? 's' : ''} to resolve</div>
+      </div>
+      <div class="fs-9 t-muted mb-3">Rovo has drafted fixes. Reviewer accepts each update — story updates automatically.</div>
+      ${issues.map((issue, i) => s.fixes.has(i) ? '' : `
+        <div class="mb-3 card-p" style="background:var(--amber-lt);border:1px solid var(--amber-border);border-radius:var(--radius-sm)">
+          <div class="fw-bold fs-10" style="color:var(--amber);margin-bottom:4px">${Icons.warn} ${issue.label}</div>
+          <div class="fs-9 t-muted mb-2">Rovo suggests: <em class="t-secondary">"${issue.fix}"</em></div>
+          ${s.accepting === i
+            ? `<div class="flex items-center gap-2 fs-9 t-muted"><div class="spinner-circle" style="width:12px;height:12px;border-width:1.5px"></div>Updating story…</div>`
+            : `<button class="btn btn-ghost fs-9" style="padding:5px 10px" onclick="acceptFix(${i})">Accept &amp; update story</button>`
+          }
+        </div>`).join('')}
+    </div>
+    <div class="card card-p anim-in" style="border-color:var(--green-border)">
+      ${issues.map((issue, i) => s.fixes.has(i)
+        ? `<div class="flex items-center gap-2 mb-1 fs-10 t-green"><div style="color:var(--green)">${Icons.check}</div>${issue.label} — fixed</div>`
+        : '').join('')}
+    </div>`;
+  } else if (approved) {
+    rhs = `
+    <div class="card card-p card-green anim-in mb-2">
+      <div class="flex items-center gap-2 mb-1">
+        <div style="color:var(--green)">${Icons.check}</div>
+        <div class="fw-black fs-11 t-green">COMP-042 approved for AI pipeline</div>
+      </div>
+      <div class="fs-9 t-secondary">All 4 ACs validated · FLS specified · Governor limits NFR included</div>
+    </div>
+    <div class="card card-p card-purple anim-in">
+      <div class="label">What happens next</div>
+      <div class="fs-10 t-secondary" style="line-height:1.55">Developer opens Claude Code and references <strong>COMP-042</strong>. Architecture Agent reads the validated story live via Jira MCP — no copy-paste, no ambiguity.</div>
+      <div class="flex items-center gap-2 mt-3">
+        <div style="width:6px;height:6px;border-radius:50%;background:var(--acn)"></div>
+        <div class="fs-9 t-acndk fw-bold">Next: Developer prompt → MCP reads Jira</div>
+      </div>
+    </div>`;
+  } else if (allFixed && !approved) {
+    rhs = `<div class="card card-p anim-in">
+      <div class="label label-muted">All fixes accepted</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${[['✓ Story structure complete','As a / I want / So that ✓','pass'],
+           ['✓ AC-1 to AC-3 format','Given/When/Then ✓','pass'],
+           ['✓ Objects referenced','Case, Queue, SLA_Milestone__c','pass'],
+           ['✓ AC-4 governor NFR','Added — Bulk 200 within limits','pass'],
+           ['✓ FLS specified','isAccessible() + isUpdateable() added','pass']
+          ].map(([l,n,st]) => `<div class="status-row st-${st}">
+            <div class="status-icon">${Icons.check}</div>
+            <div class="status-body"><div class="status-label">${l}</div><div class="status-note">${n}</div></div>
+          </div>`).join('')}
+      </div>
+      <button class="btn btn-primary w-full mt-3" style="justify-content:center" onclick="approveStory()">Architect approves COMP-042 ${Icons.check}</button>
+    </div>`;
+  }
+
+  return `
+  <div class="step-panel active" id="panel-jira">
+    <div class="step-header">
+      <div class="step-eyebrow">Step 1 of 9 — Story Readiness</div>
+      <div class="step-title">The journey starts in <em>Jira</em> — Rovo validates before AI touches it</div>
+      <div class="step-desc">BA writes the story. Rovo's Work Readiness Checker flags gaps inline. Issues are fixed before anything enters the AI pipeline.</div>
+    </div>
+    <div class="step-body">
+      <div class="sg c53">
+        <!-- LEFT: Jira ticket -->
+        <div class="col" style="gap:0">
+          <div class="jira-header-bar">
+            ${Icons.jira}
+            <span class="fw-black fs-11" style="color:white">COMP-042</span>
+            <span style="color:rgba(255,255,255,0.4)">·</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.6)">Complaints · Sprint 4</span>
+            <div class="ml-auto flex gap-2">
+              <span class="tag" style="background:rgba(255,255,255,0.12);border-color:rgba(255,255,255,0.15);color:rgba(255,255,255,0.7)">Story</span>
+              <span class="tag" style="background:rgba(255,153,0,0.7);border-color:transparent;color:white">In Refinement</span>
+            </div>
+          </div>
+          <div class="jira-content">
+            <div class="fw-black fs-13 t-primary mb-2" style="line-height:1.3">Auto-allocate Complaints cases by urgency + SLA tier</div>
+            <div class="flex gap-2 mb-3 flex-wrap">
+              <span class="tag tag-blue">Feature</span>
+              <span class="tag tag-purple">Complaints · R1</span>
+              <span class="tag tag-amber">High Priority</span>
+              <span class="tag tag-gray">8 pts</span>
+            </div>
+            <div class="label label-muted">Description</div>
+            <div class="fs-10 t-secondary mb-3" style="line-height:1.6">As a <strong>Complaints Triage Manager</strong>, I want new Case records automatically routed to the correct queue by urgency and SLA tier, so high-priority complaints reach the right team without manual intervention — within a 30-second SLA.</div>
+            <div class="label label-muted">Acceptance Criteria</div>
+            ${acs.map(ac => `
+              <div class="ac-row ${ac.ok ? 'ok' : 'warn'}">
+                <span class="ac-id ${ac.ok ? 't-green' : ''}" style="${!ac.ok ? 'color:var(--amber)' : ''}">${ac.id}</span>
+                <span class="ac-text">${ac.text}</span>
+                ${ac.warn ? `<span class="tag tag-amber">⚠ Needs NFR</span>` : ''}
+                ${ac.ok && ac.id === 'AC-4' && s.flagFixed ? `<span class="tag tag-green">Fixed</span>` : ''}
+              </div>`).join('')}
+            <div class="label label-muted mt-3">Technical Notes</div>
+            <div class="fs-10 t-muted" style="line-height:1.6">Objects: Case, Queue, SLA_Milestone__c · Integration: none · ADR: ADR-001 trigger framework${s.fixes.has(1) ? ' · <span style="color:var(--green)">FLS: isAccessible() on Case.Priority, isUpdateable() on OwnerId</span>' : ''}</div>
+          </div>
+        </div>
+        <!-- RIGHT: Rovo panel -->
+        <div class="col">
+          ${rhs}
+        </div>
+      </div>
+    </div>
+    ${footer('','Story Approved — Send to Claude Code', !approved, true)}
+  </div>`;
+}
+
+window.rovoCheck = function() {
+  stepState.jira.phase = 'checking';
+  renderStage();
+  setTimeout(() => { stepState.jira.phase = 'issues'; renderStage(); }, 1800);
+};
+window.acceptFix = function(i) {
+  stepState.jira.accepting = i;
+  renderStage();
+  setTimeout(() => {
+    stepState.jira.fixes.add(i);
+    if (i === 0) stepState.jira.flagFixed = true;
+    stepState.jira.accepting = null;
+    if (stepState.jira.fixes.size >= 2) stepState.jira.phase = 'allfixed';
+    else stepState.jira.phase = 'issues';
+    renderStage();
+  }, 1100);
+};
+window.approveStory = function() {
+  stepState.jira.phase = 'approved';
+  renderStage();
+};
+
+/* =========================================================
+   STEP 2 — MCP HANDOFF
+   ========================================================= */
+const MCP_CALLS = [
+  { tool:'mcp__jira__get_issue', tag:'Jira MCP', color:'#0052CC', icon: Icons.jira, ms:0,
+    arg:'issue_key: "COMP-042"', result:'{ summary, AC×4, sprint:4, priority:High, labels:[Complaints,R1] }' },
+  { tool:'mcp__sf__describe', tag:'SF DX MCP', color:'#00A0DC', icon: Icons.sf, ms:550,
+    arg:'objectType: "Case"', result:'{ fields: [Status, Priority, OwnerId, Queue__c, …] }' },
+  { tool:'mcp__sf__query', tag:'SF DX MCP', color:'#00A0DC', icon: Icons.sf, ms:1050,
+    arg:'SOQL: SELECT Id,DeveloperName FROM Group WHERE Type=\'Queue\'', result:'[Complaints_L1, Complaints_L2, Complaints_Escalation]' },
+  { tool:'mcp__sf__describe', tag:'SF DX MCP', color:'#00A0DC', icon: Icons.sf, ms:1500,
+    arg:'objectType: "SLA_Milestone__c"', result:'{ fields: [Target_Date__c, Status__c, Case__c] }' },
+  { tool:'read_file', tag:'Context', color:'#A100FF', icon: Icons.file, ms:1950,
+    arg:'.claude/context/domain-model.md', result:'Case lifecycle, queue patterns loaded' },
+  { tool:'read_file', tag:'Context', color:'#A100FF', icon: Icons.file, ms:2300,
+    arg:'.claude/context/security-policy.md', result:'with sharing · CRUD/FLS policy for Complaints' },
+  { tool:'read_file', tag:'Context', color:'#A100FF', icon: Icons.file, ms:2650,
+    arg:'.claude/lessons/_consolidated-principles.md', result:'23 standing rules from Sprints 1-3 loaded' },
+  { tool:'read_file', tag:'Context', color:'#A100FF', icon: Icons.file, ms:3000,
+    arg:'.claude/adrs/001-trigger-framework.md', result:'TriggerHandler base class · no logic in trigger files' },
+];
+const EXAMPLE_PROMPT = 'Generate ticket.md for COMP-042 — auto-allocate Complaints cases';
+
+function renderMcp() {
+  if (!stepState.mcp) stepState.mcp = { typed:'', started:false, progress:-1, done:false };
+  const s = stepState.mcp;
+  return `
+  <div class="step-panel active" id="panel-mcp">
+    <div class="step-header">
+      <div class="step-eyebrow">Step 2 of 9 — Developer Prompt + MCP</div>
+      <div class="step-title">Developer types a prompt. Claude Code <em>reads Jira live</em> — then queries the org.</div>
+      <div class="step-desc">The developer references the story ID. Claude Code fetches everything via MCP — live Jira data, live Salesforce schema, context files. No copy-paste anywhere.</div>
+    </div>
+    <div class="step-body">
+      <div class="sg c2">
+        <!-- Terminal -->
+        <div class="col">
+          <div>
+            <div class="code-topbar">
+              <div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div>
+              <span class="code-label">claude-code — complaints-r1</span>
+              <div class="ml-auto"><span class="tag tag-purple">Architecture Agent</span></div>
+            </div>
+            <div class="code-block" style="border-radius:0 0 var(--radius-sm) var(--radius-sm);min-height:90px">
+              <div style="color:rgba(255,255,255,0.3);margin-bottom:8px">$ claude code — sprint 4 · context loaded ✓</div>
+              <div class="flex items-center gap-2">
+                <span style="color:var(--acn);font-size:13px">›</span>
+                ${s.started
+                  ? `<span>${s.typed}${s.typed.length < EXAMPLE_PROMPT.length ? '<span class="blink"></span>' : ''}</span>`
+                  : `<input id="mcpInput" type="text" placeholder="e.g. Generate ticket for COMP-042" value="${s.typed}"
+                       onkeydown="if(event.key==='Enter'&&this.value.trim())mcpStart()"
+                       oninput="stepState.mcp.typed=this.value"
+                       style="flex:1;background:transparent;border:none;outline:none;color:rgba(255,255,255,0.8);font-family:Menlo,Monaco,monospace;font-size:11px;caret-color:var(--acn)"
+                       autofocus/>`}
+              </div>
+              ${!s.started ? `<div style="color:rgba(255,255,255,0.18);font-size:9px;margin-top:8px">Press ↵ or use the button below</div>` : ''}
+              ${s.started && s.typed.length >= EXAMPLE_PROMPT.length && s.progress < 0
+                ? `<div style="color:#4ade80;font-size:9.5px;margin-top:8px">✓ Architecture Agent activated — reading Jira MCP…</div>` : ''}
+            </div>
+          </div>
+          ${!s.started
+            ? `<button class="btn btn-primary" onclick="mcpStart()">${Icons.zap} &nbsp;Try example prompt</button>`
+            : ''
+          }
+          ${s.done
+            ? `<div class="card card-p card-purple anim-pop">
+                <div class="flex items-center gap-2 mb-2"><div style="width:18px;height:18px;border-radius:50%;background:var(--acn);display:flex;align-items:center;justify-content:center;font-size:9px;color:white">${Icons.check}</div><div class="fw-black fs-11 t-primary">All context loaded — zero hallucination</div></div>
+                <div class="g2" style="gap:6px">
+                  ${[['Story','COMP-042 + all 4 AC'],['SF Schema','Case, Queue, SLA live'],['Queues','3 verified from org'],['Security','FLS policy loaded'],['Principles','23 Sprint 1-3 rules'],['ADRs','001 trigger framework']].map(([k,v]) =>
+                    `<div style="display:flex;gap:6px;font-size:9px"><span style="color:var(--green)">${Icons.check}</span><span class="t-muted"><strong class="t-secondary">${k}:</strong> ${v}</span></div>`).join('')}
+                </div>
+              </div>`
+            : ''
+          }
+        </div>
+        <!-- MCP calls -->
+        <div class="col">
+          <div class="label">${s.progress >= 0 ? `MCP tool calls — ${Math.min(s.progress+1,MCP_CALLS.length)} of ${MCP_CALLS.length}` : 'MCP tool calls — waiting for prompt…'}</div>
+          <div class="flex-1 scroll">
+            ${MCP_CALLS.map((c,i) => {
+              const visible = i <= s.progress;
+              const done = i < s.progress || (i === s.progress && s.done);
+              return `<div class="tool-row ${done?'done':''}" style="${visible?'':'opacity:0.2'}">
+                <div class="tool-status">
+                  ${visible ? (done
+                    ? `<div class="check-circle">${Icons.check.replace('stroke="currentColor"','stroke="white"')}</div>`
+                    : `<div class="spinner-circle"></div>`)
+                    : `<div class="idle-circle"></div>`}
+                </div>
+                <div class="tool-body">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="tag" style="background:${c.color}18;border-color:${c.color}30;color:${c.color};font-size:7.5px">${c.tag}</span>
+                    <code class="fs-9 t-muted">${c.tool}</code>
+                  </div>
+                  <div class="tool-arg">↳ ${c.arg}</div>
+                  ${done ? `<div class="tool-result">← ${c.result}</div>` : ''}
+                </div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+    ${footer('← Back','Context Loaded — Build Spec', !s.done)}
+  </div>`;
+}
+
+window.mcpStart = function() {
+  const s = stepState.mcp;
+  s.started = true;
+  // type out prompt
+  let i = 0;
+  const type = setInterval(() => {
+    i++;
+    s.typed = EXAMPLE_PROMPT.slice(0,i);
+    renderStage();
+    if (i >= EXAMPLE_PROMPT.length) {
+      clearInterval(type);
+      setTimeout(fireMcp, 300);
+    }
+  }, 30);
+};
+function fireMcp() {
+  const s = stepState.mcp;
+  MCP_CALLS.forEach((c,i) => {
+    setTimeout(() => {
+      s.progress = i;
+      if (i === MCP_CALLS.length - 1) setTimeout(() => { s.done = true; renderStage(); }, 600);
+      renderStage();
+    }, c.ms);
+  });
+}
+
+/* =========================================================
+   STEP 3 — CONTEXT LAYERS
+   ========================================================= */
+const LAYERS = [
+  { id:'story',   label:'COMP-042 Story',        sub:'What just arrived via Jira MCP',   color:'#0052CC', active:true,
+    note:'The validated story provides the "what". The layers below provide the "how".',
+    files:[{n:'COMP-042 · Story text',d:'As a Triage Manager I want… ✓',on:true},{n:'AC-1 to AC-4',d:'Given/When/Then · all 4 validated ✓',on:true},{n:'Sprint 4 context',d:'R1 · Complaints Programme · 8pts',on:true}]},
+  { id:'foundation', label:'Layer 1 · Foundation', sub:'Accenture SBG · Git submodule · immutable', color:'#A100FF', active:true,
+    note:'Immutable Accenture IP. Rules load path-scoped — only relevant patterns activate per file type.',
+    files:[{n:'rules/apex-security.md',d:'ALWAYS loaded — with sharing, FLS, CRUD',on:true,always:true},{n:'rules/apex-patterns.md',d:'Loaded on .cls files — naming, governor limits',on:true},{n:'agents/architecture-agent.md',d:'ticket.md synthesis — active now',on:true,always:true},{n:'skills/code-gen/SKILL.md',d:'Apex/LWC/Flow generation agent',on:true},{n:'skills/test-architect/',d:'Test strategy + SObject factory patterns',on:true}]},
+  { id:'extensions', label:'Layer 2 · Extensions', sub:'Activated by /onboarding · Copado active', color:'#009A9A', active:true,
+    note:'Extensions activate at onboarding via symlinks. Only relevant packages load.',
+    files:[{n:'extensions/copado/rules/',d:'Copado CI/CD patterns · pipeline gates',on:true},{n:'extensions/ncino/',d:'NOT active — no nCino in this engagement',on:false},{n:'extensions/vlocity/',d:'NOT active — no OmniStudio',on:false}]},
+  { id:'context', label:'Layer 3 · Client Context', sub:'Generated from live org · Sprint 0', color:'#00875A', active:true,
+    note:'Auto-discovered from org metadata during /onboarding. Never hand-written.',
+    files:[{n:'context/domain-model.md',d:'All objects, fields, relationships from live org',on:true},{n:'context/security-policy.md',d:'FLS profiles, sharing model, data classification',on:true},{n:'context/quality-gates.md',d:'G1-G5 studio gate definitions',on:true}]},
+  { id:'lessons', label:'Layer 4 · Lessons', sub:'Sprint 1-3 learnings · 23 principles', color:'#F2A900', active:true,
+    note:'The compounding advantage. 23 principles are the distilled wisdom of Sprints 1-3.',
+    files:[{n:'lessons/_consolidated-principles.md',d:'23 rules · highest priority · loaded first',on:true,always:true},{n:'lessons/apex-patterns.md',d:'31 raw entries — naming, null-check patterns',on:true},{n:'lessons/security-findings.md',d:'8 entries — FLS edge cases for Complaints',on:true}]},
+];
+
+function renderTemplate() {
+  if (!stepState.template) stepState.template = { sel: 'foundation' };
+  const s = stepState.template;
+  const layer = LAYERS.find(l => l.id === s.sel);
+
+  return `
+  <div class="step-panel active" id="panel-template">
+    <div class="step-header">
+      <div class="step-eyebrow">Step 3 of 9 — Template & Context Ingestion</div>
+      <div class="step-title">The story activates the <em>engine layers</em> — context, skills, and agents all load</div>
+      <div class="step-desc">The .claude/ repository is the engine's intelligence. Four layers activate: immutable foundation rules, platform extensions, client context, and accumulated lessons.</div>
+    </div>
+    <div class="step-body">
+      <div class="sg c121">
+        <!-- Layer selector -->
+        <div class="col-scroll">
+          <div class="label">Activated layers</div>
+          ${LAYERS.map((l,i) => `
+            <div>
+              <button class="layer-btn ${s.sel===l.id?'active':''}" onclick="selectLayer('${l.id}')">
+                <div class="flex items-center gap-2">
+                  <div class="layer-icon-ring" style="background:${l.color}15">${
+                    l.id==='story'?Icons.file:l.id==='foundation'?Icons.layers:l.id==='extensions'?Icons.zap:l.id==='context'?Icons.brain:Icons.rocket
+                  }</div>
+                  <div style="flex:1;min-width:0">
+                    <div class="fw-bold fs-10 t-primary" style="${s.sel===l.id?'color:'+l.color:''}">${l.label}</div>
+                    <div class="fs-9 t-muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.sub}</div>
+                  </div>
+                  <div style="width:16px;height:16px;border-radius:50%;background:${l.color};display:flex;align-items:center;justify-content:center;flex-shrink:0">${Icons.check.replace('stroke="currentColor"','stroke="white"')}</div>
+                </div>
+              </button>
+              ${i<LAYERS.length-1?`<div class="connector-line" style="background:linear-gradient(180deg,${LAYERS[i].color}30,${LAYERS[i+1].color}30)"></div>`:''}
+            </div>`).join('')}
+        </div>
+        <!-- Files -->
+        <div class="col">
+          <div class="label" style="color:${layer.color}">${layer.label} — files</div>
+          <div class="card card-p" style="border-color:${layer.id==='story'?'':layer.color+'18'}">
+            <div class="fs-10 t-secondary" style="line-height:1.55">${layer.note}</div>
+          </div>
+          <div class="flex-1 scroll">
+            ${layer.files.map(f => `
+              <div class="flex items-start gap-2 p-2 mb-1 rounded" style="background:${f.on?(f.always?layer.color+'08':'rgba(255,255,255,0.6)'):'rgba(0,0,0,0.02)'};border:1px solid ${f.on?(f.always?layer.color+'20':'var(--border-subtle)'):'transparent'};border-radius:var(--radius-sm);opacity:${f.on?1:0.4}">
+                <span style="color:${f.on?layer.color:'var(--text-faint)'};margin-top:2px;flex-shrink:0">▸</span>
+                <div style="flex:1;min-width:0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <code class="fs-9 fw-bold" style="color:${f.on?layer.color:'var(--text-muted)'}">${f.n}</code>
+                    ${f.always?`<span class="tag tag-purple" style="font-size:7px">always loaded</span>`:''}
+                    ${!f.on?`<span class="tag tag-gray" style="font-size:7px">inactive</span>`:''}
+                  </div>
+                  <div class="fs-9 t-muted mt-1">${f.d}</div>
+                </div>
+              </div>`).join('')}
+          </div>
+        </div>
+        <!-- Session summary -->
+        <div class="col">
+          <div class="label">Session log</div>
+          <div class="code-block fs-9" style="border-radius:var(--radius-sm)">
+&gt; Client: Complaints\n&gt; Sprint: 4 · R1\n&gt; Domain: 12 objects ✓\n&gt; Queues: 3 verified ✓\n&gt; 23 principles ✓\n&gt; Copado: ✓\n&gt; MCP: Jira ✓ SF ✓\n&gt; Agent: architecture\n&gt; Ready.
+          </div>
+          <div class="card card-p card-purple" style="flex:1;min-height:0">
+            <div class="label">Path-scoped rules</div>
+            ${[['Always loaded','apex-security.md, git-workflow.md'],['On .cls files only','apex-patterns.md, governor-limits.md'],['On .js/.html only','lwc-patterns.md, a11y-rules.md']].map(([k,v],i) => `
+              <div class="mb-2 p-2 rounded" style="background:${['rgba(161,0,255,0.05)','rgba(0,154,154,0.05)','rgba(0,135,90,0.05)'][i]};border:1px solid ${['var(--acn-border)','rgba(0,154,154,0.18)','var(--green-border)'][i]};border-radius:var(--radius-sm)">
+                <div class="fw-bold fs-9 mb-1" style="color:${['var(--acn-dk)','var(--teal)','var(--green)'][i]}">${k}</div>
+                <div class="fs-9 t-muted">${v}</div>
+              </div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+    ${footer('← Back', 'Context Loaded — Generate Spec')}
+  </div>`;
+}
+window.selectLayer = id => { stepState.template.sel = id; renderStage(); };
+
+/* =========================================================
+   STEP 4 — TICKET.MD SPEC
+   ========================================================= */
+const SPEC_SECTIONS = [
+  { key:'functional', label:'## Functional Scope', color:'#A100FF', src:'Jira AC',
+    body:`- Automatic allocation of Case records to Queues on insert/update
+- Priority = High → Complaints_L2
+- Priority = Critical → Complaints_Escalation (within 30s SLA)
+- Priority change triggers re-assignment (AC-4 NFR: bulk 200 records)` },
+  { key:'objects', label:'## Objects Affected', color:'#0052CC', src:'SF DX MCP live query',
+    body:`Case (standard): Status, Priority, OwnerId
+  Relationships: SLA_Milestone__c (lookup)
+Queue: Complaints_L1, Complaints_L2, Complaints_Escalation
+  Source: SELECT Id,DeveloperName FROM Group WHERE Type='Queue'
+SLA_Milestone__c: Target_Date__c, Status__c, Case__c` },
+  { key:'security', label:'## Security Requirements', color:'#C80028', src:'security-policy.md',
+    body:`Class MUST use \`with sharing\`
+CRUD: Schema.sObjectType.Case.isUpdateable() before OwnerId write
+FLS: isAccessible() on Case.Priority, Account.VIP_Client__c
+Sharing: Respect org-wide Default Private on Case` },
+  { key:'nfr', label:'## NFR Thresholds', color:'#009A9A', src:'AC + lessons',
+    body:`Allocation within 30s SLA (AC-2 critical path)
+Bulkified: handle up to 200 records per trigger fire
+Governor limits: single SOQL for Queue lookup (static Map cache)
+CPU budget: allocation logic < 50% of 10s limit` },
+  { key:'ac', label:'## Acceptance Criteria', color:'#00875A', src:'Jira COMP-042',
+    body:`1. GIVEN Case.Priority='High' WHEN trigger fires THEN OwnerId=Complaints_L2
+2. GIVEN Case.Priority='Critical' WHEN fires THEN <30s
+3. GIVEN 200 Cases bulk insert THEN all allocated, 0 LimitException
+4. GIVEN Case.Priority changes to 'Critical' THEN queue re-assigned` },
+];
+
+function renderTicket() {
+  if (!stepState.ticket) stepState.ticket = { sel:'functional', approved:false };
+  const s = stepState.ticket;
+  const sec = SPEC_SECTIONS.find(x => x.key === s.sel);
+
+  return `
+  <div class="step-panel active" id="panel-ticket">
+    <div class="step-header">
+      <div class="step-eyebrow">Step 4 of 9 — Machine-Precise Spec</div>
+      <div class="step-title">Architecture Agent produces <em>ticket.md</em> — the build pivot point</div>
+      <div class="step-desc">Jira AC is written for humans. ticket.md is machine-precise — every object verified against the live org, every security rule explicit. All 4 build agents work from this approved spec.</div>
+    </div>
+    <div class="step-body">
+      <div class="sg c121">
+        <!-- Section selector -->
+        <div class="col-scroll">
+          <div class="label">Sections</div>
+          ${SPEC_SECTIONS.map(sec => `
+            <button class="layer-btn ${s.sel===sec.key?'active':''}" onclick="selSpec('${sec.key}')" style="${s.sel===sec.key?'border-color:'+sec.color+'30;background:'+sec.color+'06':''}">
+              <div class="fw-bold fs-10" style="color:${s.sel===sec.key?sec.color:'var(--text-primary)'}">${sec.label.replace('## ','')}</div>
+              <div class="fs-9 t-muted mt-1">${sec.src}</div>
+            </button>`).join('')}
+          <div style="margin-top:auto">
+            ${s.approved
+              ? `<div class="card card-green card-p">
+                  <div class="fw-black fs-10 t-green">✓ ticket.md approved</div>
+                  <div class="fs-9 t-secondary mt-1">4 agents can begin</div>
+                </div>`
+              : `<button class="btn btn-ghost w-full" style="justify-content:center" onclick="approveTicket()">${Icons.lock} &nbsp;Architect Approves</button>`
+            }
+          </div>
+        </div>
+        <!-- Editor -->
+        <div class="col">
+          <div class="code-topbar">
+            <div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div>
+            <span class="code-label">ticket-COMP-042-v1.md</span>
+            <div class="ml-auto flex gap-2">
+              <span class="tag tag-purple">Architecture Agent</span>
+              <span class="tag tag-green">Sprint 4</span>
+            </div>
+          </div>
+          <div class="code-block" style="flex:1;min-height:0;overflow-y:auto;border-radius:0 0 var(--radius-sm) var(--radius-sm)">
+            <div style="color:rgba(255,255,255,0.18);font-size:9px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.05)">
+# COMP-042 — Auto-allocate Complaints by Urgency + SLA
+# /generate-ticket · Sprint 4 · Architecture Agent v1.2.0</div>
+            ${SPEC_SECTIONS.map(ss => `
+              <div class="spec-line ${s.sel===ss.key?'active':''}" onclick="selSpec('${ss.key}')">
+                <div class="spec-section-title" style="color:${s.sel===ss.key?ss.color:'rgba(255,255,255,0.35)'}">${ss.label}</div>
+                <pre class="spec-body ${s.sel===ss.key?'highlight':''}">${ss.body}</pre>
+                ${s.sel===ss.key?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:6px"><span class="fs-8 t-faint">Source:</span><span class="tag" style="background:${ss.color}18;border-color:${ss.color}30;color:${ss.color};font-size:7px">${ss.src}</span></div>`:''}
+              </div>`).join('')}
+          </div>
+        </div>
+        <!-- Why it matters -->
+        <div class="col-scroll">
+          <div class="label">Why this matters</div>
+          ${[
+            [Icons.flag,'Precision','Jira says "auto-allocate". ticket.md says exactly which field, which SOQL, which sharing model.'],
+            [Icons.shield,'No hallucination','Every field name verified against live org. Field doesn\'t exist → spec error, not a code bug.'],
+            [Icons.lock,'Security baked in','with sharing, FLS checks — explicit before any code is generated.'],
+            [Icons.zap,'4 agents, 1 spec','Code, Tests, Security, Docs all read the same source. Consistency guaranteed.'],
+            [Icons.brain,'Lessons shape it','23 Sprint 1-3 principles influenced this spec — the engine learned from past corrections.'],
+          ].map(([icon,t,d]) => `
+            <div class="card card-p">
+              <div class="flex items-center gap-2 mb-1"><span style="color:var(--acn)">${icon}</span><div class="fw-bold fs-10 t-primary">${t}</div></div>
+              <div class="fs-9 t-secondary" style="line-height:1.5">${d}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>
+    ${footer('← Back','Spec Approved — Launch Agents', !s.approved)}
+  </div>`;
+}
+window.selSpec = k => { stepState.ticket.sel = k; renderStage(); };
+window.approveTicket = () => { stepState.ticket.approved = true; renderStage(); };
+
+/* =========================================================
+   STEP 5 — PARALLEL BUILD
+   ========================================================= */
+const AGENTS = [
+  { id:'code', label:'Code Gen', icon: Icons.code_icon, color:'#A100FF', skill:'code-gen/SKILL.md', dur:2600,
+    outputs:['ComplaintsAllocationHandler.cls (with sharing · 187 lines)','ComplaintsAllocationTrigger.trigger (delegator only)','Static Map cache — single SOQL at class load','isUpdateable() + isAccessible() FLS checks'],
+    preview:`public with sharing class ComplaintsAllocationHandler
+    extends TriggerHandler {
+
+  private static final Map<String, Id> QUEUE_MAP;
+  static {
+    for (Group q : [SELECT Id, DeveloperName
+        FROM Group WHERE Type = 'Queue'
+        AND DeveloperName IN :QUEUE_NAMES]) {
+      QUEUE_MAP.put(q.DeveloperName, q.Id);
+    }
+  }
+
+  public override void beforeInsert(List<Case> cases) {
+    if (!Schema.sObjectType.Case.isUpdateable()) return;
+    if (!Case.Priority.getDescribe().isAccessible()) return;
+    allocate(cases);
+  }
+}` },
+  { id:'test', label:'Test Gen', icon: Icons.test, color:'#009A9A', skill:'test-architect/SKILL.md', dur:3100,
+    outputs:['ComplaintsAllocationHandlerTest.cls (6 methods)','SObject factory via TestDataFactory','Bulk: 200 records within limits','Assert.areEqual() — not System.assertEquals()'],
+    preview:`@IsTest
+private class ComplaintsAllocationHandlerTest {
+
+  @IsTest
+  static void test_high_routesToL2() {
+    Case c = TestDataFactory.createCase(
+      new Map<String,Object>{ 'Priority' => 'High' }
+    );
+    Test.startTest(); insert c; Test.stopTest();
+    Assert.areEqual(
+      QUEUE_MAP.get('Complaints_L2'),
+      [SELECT OwnerId FROM Case WHERE Id=:c.Id].OwnerId,
+      'High priority should route to L2'
+    );
+  }
+  // +5 more: Critical, bulk, re-assign, null, VIP
+}` },
+  { id:'security', label:'Security', icon: Icons.shield, color:'#C80028', skill:'security-auditor/SKILL.md', dur:2100,
+    outputs:['✓ with sharing on all classes','✓ FLS isAccessible() on Case.Priority','✓ CRUD isUpdateable() before write','⚠ Static SOQL block — governor note added'],
+    preview:`=== Security Audit: COMP-042 ===
+
+[PASS] with sharing: ComplaintsAllocationHandler ✓
+[PASS] FLS: Case.Priority isAccessible() ✓
+[PASS] CRUD: Case.OwnerId isUpdateable() ✓
+[PASS] SOQL injection: bind variables only ✓
+[WARN] Static SOQL initialiser — runs before test ctx
+       Fix: add null-guard if(QUEUE_MAP.isEmpty())
+       → captured in lessons/apex-patterns.md
+[PASS] No PII fields referenced ✓
+
+Result: PASS · 1 advisory (encoded as lesson)` },
+  { id:'docs', label:'Docs', icon: Icons.docs, color:'#F2A900', skill:'doc-generator/SKILL.md', dur:2400,
+    outputs:['Technical Design Doc (Confluence format)','Test Traceability Matrix (AC-1 to AC-4)','User Guide: queue routing behaviour','Release Notes draft'],
+    preview:`## Technical Design — COMP-042
+### Queue Allocation Service
+
+Trigger: ComplaintsAllocationTrigger (before insert/update)
+Handler: ComplaintsAllocationHandler (with sharing)
+Pattern: Static Map cache — ADR-004
+
+Queue Routing:
+  Critical + VIP → Complaints_Escalation
+  High           → Complaints_L2
+  Medium/Low     → Complaints_L1
+
+Coverage: 6 tests · 96% lines · 100% branches
+→ Auto-publish to Confluence via MCP` },
+];
+
+function renderBuild() {
+  if (!stepState.build) stepState.build = { started:false, progress:{}, done:{}, sel:'code' };
+  const s = stepState.build;
+  const allDone = Object.keys(s.done).length === AGENTS.length;
+  const agent = AGENTS.find(a => a.id === s.sel);
+
+  return `
+  <div class="step-panel active" id="panel-build">
+    <div class="step-header">
+      <div class="step-eyebrow">Step 5 of 9 — Parallel Agentic Build</div>
+      <div class="step-title"><em>4 agents</em> fire simultaneously from the approved spec</div>
+      <div class="step-desc">One ticket.md. Four separate context windows. Code, Tests, Security, and Documentation in parallel. Human review follows.</div>
+    </div>
+    <div class="step-body">
+      <div class="sg c2">
+        <!-- Agent list -->
+        <div class="col">
+          ${!s.started && !allDone ? `<button class="btn btn-primary" style="justify-content:center" onclick="launchAgents()">${Icons.zap} &nbsp;Launch 4 Parallel Agents</button>` : ''}
+          ${s.started && !allDone ? `<div class="flex items-center gap-2 fs-10 t-muted"><div class="spinner-circle" style="width:12px;height:12px;border-width:1.5px"></div>Agents running in parallel…</div>` : ''}
+          ${allDone ? `<div class="card card-green card-p"><div class="fw-black fs-10 t-green">✓ All 4 complete — ready for human review</div></div>` : ''}
+          <div class="flex-1 scroll">
+            ${AGENTS.map(a => `
+              <div class="agent-card ${s.sel===a.id?'active':''}" onclick="selAgent('${a.id}')" style="${s.sel===a.id?'border-color:'+a.color+'28':''}">
+                <div class="flex items-center gap-2 mb-2">
+                  <span style="color:${a.color}">${a.icon}</span>
+                  <span class="fw-black fs-11" style="color:${s.sel===a.id?a.color:'var(--text-primary)'}">${a.label} Agent</span>
+                  <span class="fs-9 t-muted ml-auto">${a.skill}</span>
+                  ${s.done[a.id] ? `<span style="color:var(--green)">${Icons.check}</span>` : ''}
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-fill-sm" style="width:${s.progress[a.id]||0}%;background:${a.color}"></div>
+                </div>
+                ${s.done[a.id] ? `<div class="mt-2">${a.outputs.slice(0,2).map(o=>`<div class="fs-9 t-muted">· ${o}</div>`).join('')}</div>` : ''}
+              </div>`).join('')}
+          </div>
+        </div>
+        <!-- Output panel -->
+        <div class="col">
+          <div class="flex items-center gap-2">
+            <span style="color:${agent.color}">${agent.icon}</span>
+            <div class="fw-black fs-12" style="color:${agent.color}">${agent.label} Agent</div>
+            <span class="tag tag-purple">${agent.skill}</span>
+            ${s.done[agent.id] ? `<span class="tag tag-green">Complete</span>` : ''}
+          </div>
+          ${s.done[agent.id]
+            ? `<div style="display:flex;flex-direction:column;gap:10px;flex:1;min-height:0;overflow:hidden">
+                <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+                  ${agent.outputs.map(o=>`<div class="card card-p" style="display:flex;gap:8px;align-items:flex-start;font-size:10px"><span style="color:${agent.color}">▸</span><span class="t-secondary">${o}</span></div>`).join('')}
+                </div>
+                <div class="code-topbar"><div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div><span class="code-label">${agent.id === 'code' ? 'ComplaintsAllocationHandler.cls' : agent.id === 'test' ? 'ComplaintsAllocationHandlerTest.cls' : agent.id === 'security' ? 'audit-COMP-042.txt' : 'technical-design-COMP-042.md'}</span></div>
+                <div class="code-block" style="flex:1;min-height:0;overflow-y:auto;border-radius:0 0 var(--radius-sm) var(--radius-sm)">${agent.preview}</div>
+              </div>`
+            : `<div style="flex:1;display:flex;align-items:center;justify-content:center;min-height:0">
+                ${s.started
+                  ? `<div style="text-align:center"><div style="width:48px;height:48px;border-radius:50%;border:3px solid ${agent.color}18;border-top-color:${agent.color};animation:spin 0.8s linear infinite;margin:0 auto 10px"></div><div class="fw-black fs-12" style="color:${agent.color}">${agent.label} running…</div><div class="fs-10 t-muted mt-1">Reading ticket.md + skill context</div></div>`
+                  : `<div style="text-align:center;opacity:0.3"><div style="font-size:32px;margin-bottom:8px">${agent.icon}</div><div class="fs-11 t-muted">Launch agents to see output</div></div>`}
+              </div>`
+          }
+        </div>
+      </div>
+    </div>
+    ${footer('← Back','All Agents Done — Review Gates', !allDone)}
+  </div>`;
+}
+window.selAgent = id => { stepState.build.sel = id; renderStage(); };
+window.launchAgents = function() {
+  stepState.build.started = true;
+  renderStage();
+  AGENTS.forEach(a => {
+    let t = 0;
+    const iv = setInterval(() => {
+      t++;
+      stepState.build.progress[a.id] = t/20*100;
+      renderStage();
+      if (t >= 20) {
+        clearInterval(iv);
+        stepState.build.done[a.id] = true;
+        renderStage();
+      }
+    }, a.dur/20);
+  });
+};
+
+/* =========================================================
+   STEP 6 — HUMAN GATES
+   ========================================================= */
+const GATES = [
+  { id:'arch', role:'Architect', label:'Spec + Code Architecture', color:'#A100FF',
+    checks:[
+      {t:'ticket.md aligns with ADR-001 trigger framework',s:'pass'},
+      {t:'Queue assignment matches ADR-004 (static Map)',s:'pass'},
+      {t:'Static SOQL block → governor note documented',s:'warn'},
+      {t:'AC-4 re-assignment NFR in spec',s:'pass'},
+      {t:'FLS requirements fully specified',s:'pass'},
+    ],
+    comment:'Static SOQL block is fine but needs null-guard before test context. Running /update-learnings — encoded into lessons/apex-patterns.md for future builds.',
+    lesson:'lessons/apex-patterns.md: "Static SOQL initialisers need null-guard: if(QUEUE_MAP.isEmpty())"' },
+  { id:'dev', role:'Senior Developer', label:'Code Review', color:'#009A9A',
+    checks:[
+      {t:'with sharing declared on handler class',s:'pass'},
+      {t:'TriggerHandler base class pattern correct',s:'pass'},
+      {t:'CRUD/FLS checks before every DML',s:'pass'},
+      {t:'Single SOQL via Map cache — ADR-004',s:'pass'},
+      {t:'No logic in trigger file itself',s:'pass'},
+    ],
+    comment:'Clean. Queue map cache is correct. Added debug log on unrecognised-priority branch for ops visibility.',
+    lesson:'No new lesson — existing patterns sufficient.' },
+  { id:'qa', role:'QA Engineer', label:'Test Coverage Review', color:'#00875A',
+    checks:[
+      {t:'All 4 AC scenarios covered by tests',s:'pass'},
+      {t:'Bulk test: 200 records within limits',s:'pass'},
+      {t:'Assert.areEqual used (not deprecated)',s:'pass'},
+      {t:'TestDataFactory for all SObject creation',s:'pass'},
+      {t:'Negative test: exact default queue ID asserted',s:'warn'},
+    ],
+    comment:'Good coverage. Negative scenario didn\'t assert exact default queue — assertion added. /test-coverage: 96% line, 100% branch.',
+    lesson:'lessons/test-patterns.md: "Negative test: assert exact default queue Id, not absence of exception"' },
+];
+
+function renderGates() {
+  if (!stepState.gates) stepState.gates = { sel:'arch', approved:{} };
+  const s = stepState.gates;
+  const gate = GATES.find(g => g.id === s.sel);
+  const allApproved = GATES.every(g => s.approved[g.id]);
+  const isDone = s.approved[gate.id];
+
+  return `
+  <div class="step-panel active" id="panel-gates">
+    <div class="step-header">
+      <div class="step-eyebrow">Step 6 of 9 — Human Review Gates</div>
+      <div class="step-title">Three humans review before anything <em>ships</em></div>
+      <div class="step-desc">Hooks are deterministic. Humans are the quality standard. Every correction is captured into lessons/ — no knowledge is wasted.</div>
+    </div>
+    <div class="step-body">
+      <div class="sg c121">
+        <!-- Gates list -->
+        <div class="col">
+          <div class="label">Review gates</div>
+          ${GATES.map(g => `
+            <button class="gate-btn ${s.sel===g.id?'active':''} ${s.approved[g.id]?'done-gate':''}" onclick="selGate('${g.id}')">
+              <div class="flex items-center gap-2">
+                <div style="width:18px;height:18px;border-radius:50%;${s.approved[g.id]?'background:var(--green)':'border:1.5px solid var(--border)'};display:flex;align-items:center;justify-content:center">
+                  ${s.approved[g.id]?Icons.check.replace('stroke="currentColor"','stroke="white"'):''}
+                </div>
+                <div>
+                  <div class="fw-black fs-11 t-primary" style="${s.sel===g.id?'color:'+g.color:''}">${g.role}</div>
+                  <div class="fs-9 t-muted">${g.label}</div>
+                </div>
+              </div>
+            </button>`).join('')}
+          <div style="margin-top:auto;display:flex;flex-direction:column;gap:10px">
+            ${allApproved
+              ? `<div class="card card-green card-p">
+                  <div class="fw-black fs-10 t-green">All gates cleared</div>
+                  <div class="fs-9 t-secondary mt-1">Copado pipeline ready</div>
+                </div>`
+              : ''
+            }
+            <button class="btn btn-ghost fs-9" style="padding:5px 10px;color:var(--red);border-color:var(--red-border)" onclick="goTo('fault')">${Icons.warn} &nbsp;See fault paths</button>
+          </div>
+        </div>
+        <!-- Gate detail -->
+        <div class="col">
+          <div class="flex items-center gap-2">
+            <div class="fw-black fs-12" style="color:${gate.color}">${gate.role}</div>
+            <div class="fs-10 t-muted">${gate.label}</div>
+            ${isDone ? `<span class="tag tag-green">Approved</span>` : ''}
+          </div>
+          <div class="flex-1 scroll">
+            ${gate.checks.map(c => `
+              <div class="status-row st-${c.s}">
+                <div class="status-icon">${c.s==='pass'?Icons.check:Icons.warn}</div>
+                <div class="status-body"><div class="status-label">${c.t}</div></div>
+              </div>`).join('')}
+            <div class="card card-p mt-2">
+              <div class="fs-9 t-muted fw-bold uppercase" style="letter-spacing:0.1em;margin-bottom:5px">Reviewer comment</div>
+              <div class="fs-10 t-secondary" style="line-height:1.55;font-style:italic">"${gate.comment}"</div>
+            </div>
+          </div>
+        </div>
+        <!-- Actions -->
+        <div class="col">
+          <div class="label">Actions</div>
+          ${isDone
+            ? `<div class="card card-green card-p anim-in">
+                <div class="fw-black fs-10 t-green">✓ Approved by ${gate.role}</div>
+                <div class="fs-9 t-secondary mt-1">Lesson captured via /update-learnings</div>
+              </div>`
+            : `<button class="btn btn-primary w-full" style="justify-content:center;background:${gate.color}" onclick="approveGate('${gate.id}')">✓ Approve — ${gate.role}</button>
+               <button class="btn btn-ghost w-full" style="justify-content:center;color:var(--red);border-color:var(--red-border)" onclick="goTo('fault')">✗ Flag Issue → Fault Paths</button>`
+          }
+          <div class="card card-p card-purple mt-2">
+            <div class="label t-acndk">Learning captured</div>
+            <div class="fs-9 t-secondary" style="font-family:Menlo,Monaco,monospace;line-height:1.6">${gate.lesson}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    ${footer('← Back','All Gates Passed → Deploy', !allApproved)}
+  </div>`;
+}
+window.selGate = id => { stepState.gates.sel = id; renderStage(); };
+window.approveGate = function(id) {
+  if (!stepState.gates) stepState.gates = { sel:'arch', approved:{} };
+  stepState.gates.approved[id] = true;
+  renderStage();
+};
+
+/* =========================================================
+   STEP 7 — FAULT PATHS
+   ========================================================= */
+const FAULTS = [
+  { id:'gate', sev:'Medium', stage:'Human Gate', icon:Icons.lock, color:'#A100FF',
+    title:'Reviewer flags a defect in generated code',
+    scenario:'Gate 2 (Dev): allocation handler doesn\'t null-check Case.Priority — NullPointerException risk. Not caught by security agent.',
+    steps:['Dev marks gate FAILED with specific comment','ticket.md updated: add null-check NFR for Priority','Code Gen re-runs on affected method only','Gate 2 re-review — now passing'],
+    lesson:'lessons/apex-patterns.md: "Always null-check Case.Priority — not required in schema"',
+    impact:'+2 hours',encoded:true },
+  { id:'copado', sev:'Low', stage:'Copado CI/CD', icon:Icons.zap, color:'#F2A900',
+    title:'PMD scan fails on deployed code',
+    scenario:'Copado\'s PMD scan flags "AvoidDeeplyNestedIfStmts" — the if/else chain depth exceeds ruleset threshold.',
+    steps:['Copado marks build FAILED — PR blocked from QA','"/diagnose" identifies root cause: code-gen skill gap','Code Gen re-runs: nested if → Map lookup pattern','PMD clean — pipeline continues'],
+    lesson:'lessons/apex-patterns.md: "Use Map<String,Id> lookup for queue logic — not if/else chains >3 levels"',
+    impact:'+1.5 hours',encoded:true },
+  { id:'uat', sev:'High', stage:'UAT — Late Stage', icon:Icons.flag, color:'#C80028',
+    title:'Business rule discovered in UAT',
+    scenario:'UAT: VIP account Cases must always escalate regardless of Priority. Rule existed in a SharePoint doc never loaded at Sprint 0.',
+    steps:['Architect runs /generate-ticket with VIP rule included','domain-model.md: Account.VIP_Client__c field added','ticket.md v2 — VIP override logic added','Delta regeneration: code + tests for VIP scenario only','Gates re-run on changed files only'],
+    lesson:'context/domain-model.md: "Account.VIP_Client__c overrides all queue assignment"',
+    impact:'+1.5 sprints',encoded:true,
+    preventable:'Would have been caught if /onboarding included the SharePoint doc.' },
+  { id:'rot', sev:'Low', stage:'Long Session', icon:Icons.brain, color:'#009A9A',
+    title:'Context rot — output degrades mid-session',
+    scenario:'Dev has been in same session 45+ minutes. Code Gen starts ignoring naming conventions established early in session.',
+    steps:['/diagnose → "Context rot" identified','Run /compact to recover CLAUDE.md','Fresh session — context reloads from .claude/','Generation resumes with full context intact'],
+    lesson:'Session protocol: single-task sessions <30 min. /compact recovers CLAUDE.md.',
+    impact:'+20 min',encoded:false },
+];
+
+function renderFault() {
+  if (!stepState.fault) stepState.fault = { sel:'gate' };
+  const s = stepState.fault;
+  const fault = FAULTS.find(f => f.id === s.sel);
+  const sevColor = fault.sev==='High'?'var(--red)':fault.sev==='Medium'?'var(--amber)':'var(--teal)';
+
+  return `
+  <div class="step-panel active" id="panel-fault">
+    <div class="step-header">
+      <div class="step-eyebrow">Step 7 of 9 — Fault Paths</div>
+      <div class="step-title">What happens when something <span style="color:var(--red)">goes wrong</span></div>
+      <div class="step-desc">Every failure has a governed recovery. Every recovery creates a lesson. The same failure never happens twice.</div>
+    </div>
+    <div class="step-body">
+      <div class="sg c121">
+        <!-- Fault list -->
+        <div class="col-scroll">
+          <div class="label">Failure scenarios</div>
+          ${FAULTS.map(f => {
+            const sc = f.sev==='High'?'var(--red)':f.sev==='Medium'?'var(--amber)':'var(--teal)';
+            return `<button class="fault-btn ${s.sel===f.id?'active':''}" onclick="selFault('${f.id}')" style="${s.sel===f.id?'border-color:'+f.color+'28;background:'+f.color+'05':''}">
+              <div class="flex items-center gap-2 mb-1">
+                <span style="color:${f.color}">${f.icon}</span>
+                <span class="tag" style="font-size:7.5px;background:${sc}18;border-color:${sc}30;color:${sc}">${f.sev}</span>
+              </div>
+              <div class="fw-bold fs-10 t-primary" style="line-height:1.3">${f.title}</div>
+              <div class="fs-9 t-muted mt-1">${f.stage}</div>
+            </button>`;}).join('')}
+          <div class="card card-purple card-p" style="margin-top:auto">
+            <div class="fw-bold fs-9 t-acn mb-1">The principle</div>
+            <div class="fs-9 t-secondary" style="line-height:1.5">Every fault has a recovery. Every recovery creates a lesson. The same failure never repeats.</div>
+          </div>
+        </div>
+        <!-- Recovery -->
+        <div class="col">
+          <div class="card card-p" style="display:flex;align-items:flex-start;gap:12px;background:${fault.color}07;border:1px solid ${fault.color}20;flex-shrink:0">
+            <span style="color:${fault.color};font-size:18px">${fault.icon}</span>
+            <div>
+              <div class="flex items-center gap-2 mb-1 flex-wrap">
+                <div class="fw-black fs-12 t-primary">${fault.title}</div>
+                <span class="tag" style="background:${sevColor}15;border-color:${sevColor}30;color:${sevColor}">${fault.sev} severity</span>
+              </div>
+              <div class="fs-10 t-secondary" style="line-height:1.55">${fault.scenario}</div>
+            </div>
+          </div>
+          <div class="label">Recovery path — detected at: ${fault.stage}</div>
+          <div class="flex-1 scroll">
+            ${fault.steps.map((step, i) => `
+              <div class="flex items-start gap-3 card-p mb-2" style="background:var(--surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm)">
+                <div style="width:20px;height:20px;border-radius:50%;background:${fault.color}aa;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:white;flex-shrink:0;margin-top:1px">${i+1}</div>
+                <div class="fs-10 t-secondary" style="line-height:1.5">${step}</div>
+              </div>`).join('')}
+            ${fault.preventable
+              ? `<div class="card card-amber card-p">
+                  <div class="fw-bold fs-9" style="color:var(--amber);margin-bottom:4px">⚠ Prevention note</div>
+                  <div class="fs-9 t-secondary">${fault.preventable}</div>
+                </div>`
+              : ''}
+          </div>
+        </div>
+        <!-- Impact + lesson -->
+        <div class="col">
+          <div>
+            <div class="label">Time impact</div>
+            <div class="metric-big mt-1" style="color:${fault.color}">${fault.impact}</div>
+            <div class="fs-9 t-muted mt-1">vs traditional: often days</div>
+          </div>
+          <div class="card card-p card-purple" style="flex:1;min-height:0">
+            <div class="label t-acn">${fault.encoded ? '✓ Encoded into engine' : '↺ Protocol applied'}</div>
+            <div class="fs-9 t-secondary" style="font-family:Menlo,Monaco,monospace;line-height:1.6;background:var(--acn-lt);border:1px solid var(--acn-border);padding:8px;border-radius:var(--radius-sm);margin-bottom:8px">${fault.lesson}</div>
+            ${fault.encoded ? `<div class="fs-9 t-secondary">Every developer benefits from the next /sprint-start.</div>` : ''}
+          </div>
+        </div>
+      </div>
+    </div>
+    ${footer('← Back', 'Back on Track — Docs')}
+  </div>`;
+}
+window.selFault = id => { stepState.fault.sel = id; renderStage(); };
+
+/* =========================================================
+   STEP 8 — CONFLUENCE DOCS
+   ========================================================= */
+const CONF_PAGES = [
+  { id:'tech', label:'Technical Design', icon: Icons.docs,
+    content: `<div class="conf-h1">COMP-042 — Queue Allocation Service: Technical Design</div>
+    <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+      <span class="conf-badge cb-purple">Auto-generated · doc-generator v1.2.0</span>
+      <span class="conf-badge cb-blue">Sprint 4 · R1</span>
+      <span class="conf-badge cb-green">✓ Published via MCP</span>
+    </div>
+    <div class="conf-info-box"><strong>Purpose:</strong> Technical implementation of automatic Case routing. Generated from ticket-COMP-042-v1.md.</div>
+    <div class="conf-h2">Architecture</div>
+    <table class="conf-table"><thead><tr><th>Component</th><th>Class/File</th><th>Pattern</th></tr></thead><tbody>
+      <tr><td>Trigger</td><td><code>ComplaintsAllocationTrigger</code></td><td>Delegator only · ADR-001</td></tr>
+      <tr><td>Handler</td><td><code>ComplaintsAllocationHandler</code></td><td>with sharing · TriggerHandler</td></tr>
+      <tr><td>Queue lookup</td><td>Static <code>Map&lt;String,Id&gt;</code></td><td>Single SOQL · ADR-004</td></tr>
+    </tbody></table>
+    <div class="conf-h2">Queue Routing Logic</div>
+    <table class="conf-table"><thead><tr><th>Condition</th><th>Target Queue</th><th>Notes</th></tr></thead><tbody>
+      <tr><td>Account.VIP_Client__c = true</td><td>Complaints_Escalation</td><td>Overrides all Priority rules</td></tr>
+      <tr><td>Priority = Critical</td><td>Complaints_Escalation</td><td>SLA &lt;30s enforced</td></tr>
+      <tr><td>Priority = High</td><td>Complaints_L2</td><td>Standard high-priority</td></tr>
+      <tr><td>Priority = Medium / null</td><td>Complaints_L1</td><td>Default · null-safe</td></tr>
+    </tbody></table>
+    <div class="conf-success-box"><strong>Dependencies:</strong> TriggerHandler.cls · TestDataFactory.cls · ADR-001 · ADR-004</div>` },
+  { id:'trace', label:'Test Traceability', icon: Icons.test,
+    content: `<div class="conf-h1">COMP-042 — Test Traceability Matrix</div>
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <span class="conf-badge cb-green">96% Line Coverage</span>
+      <span class="conf-badge cb-green">100% Branch Coverage</span>
+      <span class="conf-badge cb-blue">6 Test Methods</span>
+    </div>
+    <div class="conf-h2">Acceptance Criteria Coverage</div>
+    <table class="conf-table"><thead><tr><th>AC</th><th>Description</th><th>Test Method</th><th>Result</th></tr></thead><tbody>
+      <tr><td>AC-1</td><td>High → Complaints_L2</td><td><code>test_high_routesToL2</code></td><td><span class="conf-badge cb-green">✓ PASS</span></td></tr>
+      <tr><td>AC-2</td><td>Critical → Escalation &lt;30s</td><td><code>test_critical_escalation</code></td><td><span class="conf-badge cb-green">✓ PASS</span></td></tr>
+      <tr><td>AC-3</td><td>Bulk 200 within limits</td><td><code>test_bulk200_withinLimits</code></td><td><span class="conf-badge cb-green">✓ PASS</span></td></tr>
+      <tr><td>AC-4</td><td>Priority change re-assigns</td><td><code>test_priorityUpdate_reAssigns</code></td><td><span class="conf-badge cb-green">✓ PASS</span></td></tr>
+      <tr><td>NFR-1</td><td>Null Priority → default L1</td><td><code>test_nullPriority_defaultsL1</code></td><td><span class="conf-badge cb-green">✓ PASS</span></td></tr>
+      <tr><td>VIP-1</td><td>VIP overrides Priority</td><td><code>test_vipAccount_escalation</code></td><td><span class="conf-badge cb-green">✓ PASS</span></td></tr>
+    </tbody></table>
+    <div class="conf-success-box">All ACs covered · 0 test failures · Executed: Sprint 4, Day 8 via Copado</div>` },
+  { id:'guide', label:'User Guide', icon: Icons.docs,
+    content: `<div class="conf-h1">Queue Allocation — How It Works</div>
+    <div class="conf-info-box"><strong>What changed:</strong> From Sprint 4, Cases automatically route to the correct Complaints team. No manual queue assignment needed.</div>
+    <div class="conf-h2">How It Works</div>
+    <div class="conf-p">When a Case is created or its Priority is updated, the system assigns it automatically:</div>
+    <table class="conf-table"><thead><tr><th>Condition</th><th>Goes to</th></tr></thead><tbody>
+      <tr><td>Account is a VIP client</td><td>Complaints Escalation <em>(always, overrides Priority)</em></td></tr>
+      <tr><td>Priority = Critical</td><td>Complaints Escalation</td></tr>
+      <tr><td>Priority = High</td><td>Complaints L2 team</td></tr>
+      <tr><td>Priority = Medium or not set</td><td>Complaints L1 team</td></tr>
+    </tbody></table>
+    <div class="conf-h2">Can I override it?</div>
+    <div class="conf-p">Yes. You can manually reassign the queue at any time. The automatic allocation is the starting point — your judgment takes precedence.</div>` },
+];
+
+function renderConfluence() {
+  if (!stepState.conf) stepState.conf = { sel:'tech', publishing:false, published:false };
+  const s = stepState.conf;
+  const page = CONF_PAGES.find(p => p.id === s.sel);
+
+  return `
+  <div class="step-panel active" id="panel-confluence">
+    <div class="step-header">
+      <div class="step-eyebrow">Step 8 of 9 — Auto-Published Documentation</div>
+      <div class="step-title">Docs auto-push to <span style="color:#F2A900">Confluence</span> via MCP — <em>zero manual effort</em></div>
+      <div class="step-desc">The doc-generator agent produces structured pages from ticket.md and test results. Published automatically. Jira status updates to Done.</div>
+    </div>
+    <div class="step-body">
+      <div class="sg c53">
+        <!-- Confluence viewer -->
+        <div class="col">
+          <div style="display:flex;align-items:center;gap:8px;padding:7px 14px;background:#0052CC;border-radius:var(--radius) var(--radius) 0 0">
+            <div style="width:20px;height:20px;border-radius:5px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:white">C</div>
+            <span style="font-size:11px;font-weight:700;color:white">Confluence</span>
+            <span style="color:rgba(255,255,255,0.4)">·</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.65)">Complaints · R1 · COMP-042</span>
+            <div style="margin-left:auto;display:flex;gap:6px">
+              ${s.published ? `<span class="tag" style="background:rgba(40,200,60,0.3);border-color:transparent;color:#90ffa0">✓ Live</span>` : ''}
+              <span class="tag" style="background:rgba(255,255,255,0.12);border-color:transparent;color:rgba(255,255,255,0.6)">doc-generator v1.2.0</span>
+            </div>
+          </div>
+          <div style="flex:1;min-height:0;overflow:auto;background:white;border:1px solid rgba(0,82,204,0.1);border-top:none;border-radius:0 0 var(--radius) var(--radius);padding:20px">
+            ${page.content}
+          </div>
+        </div>
+        <!-- Sidebar -->
+        <div class="col">
+          <div class="label">Generated pages</div>
+          ${CONF_PAGES.map(p => `
+            <button class="layer-btn ${s.sel===p.id?'active':''}" onclick="selConf('${p.id}')">
+              <div class="flex items-center gap-2">
+                <span style="color:${s.sel===p.id?'var(--acn)':'var(--text-muted)'}"><span style="font-size:14px">${p.icon}</span></span>
+                <span class="fw-bold fs-10 t-primary">${p.label}</span>
+                ${s.published ? `<span style="color:var(--green);margin-left:auto">${Icons.check}</span>` : ''}
+              </div>
+            </button>`).join('')}
+          <div class="card card-p">
+            <div class="fw-bold fs-9 t-muted uppercase mb-2" style="letter-spacing:0.1em">Publish via MCP</div>
+            <code class="fs-9 t-muted" style="font-family:Menlo,Monaco,monospace;display:block;margin-bottom:8px">mcp__confluence__create_page</code>
+            ${s.published
+              ? `<div>${CONF_PAGES.map(p=>`<div class="flex gap-2 fs-9 t-green mb-1">${Icons.check} ${p.label}</div>`).join('')}
+                 <div class="rule"></div>
+                 <div class="fs-9 t-secondary">Jira COMP-042 → <strong class="t-green">Done</strong></div>
+                </div>`
+              : s.publishing
+                ? `<div class="flex items-center gap-2 fs-10 t-muted"><div class="spinner-circle" style="width:12px;height:12px;border-width:1.5px"></div>Publishing…</div>`
+                : `<button class="btn btn-primary w-full" style="justify-content:center;background:#F2A900" onclick="publishConf()">Publish all pages</button>`
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+    ${footer('← Back','Deployed ✓ — See Learnings', false)}
+  </div>`;
+}
+window.selConf = id => { stepState.conf.sel = id; renderStage(); };
+window.publishConf = function() {
+  stepState.conf.publishing = true; renderStage();
+  setTimeout(() => { stepState.conf.publishing = false; stepState.conf.published = true; renderStage(); }, 1400);
+};
+
+/* =========================================================
+   STEP 9 — SUCCESS
+   ========================================================= */
+function renderSuccess() {
+  const lessons = [
+    {file:'lessons/apex-patterns.md',lesson:'Null-guard on Case.Priority — not required in schema',via:'Gate 2'},
+    {file:'lessons/apex-patterns.md',lesson:'Static SOQL initialisers need null-guard for test context',via:'Gate 1'},
+    {file:'lessons/test-patterns.md',lesson:'Negative tests must assert exact default queue Id',via:'Gate 3'},
+    {file:'context/domain-model.md',lesson:'Account.VIP_Client__c overrides all queue assignment',via:'UAT'},
+  ];
+  return `
+  <div class="step-panel active" id="panel-success">
+    <div class="step-header">
+      <div class="step-eyebrow">Step 9 of 9 — Deployed</div>
+      <div class="step-title">COMP-042 is live. The engine is <em>smarter</em> than it was this morning.</div>
+      <div class="step-desc">One story. Six outputs. Three human gates. Four lessons encoded. Zero documentation effort. The next story starts from a stronger baseline.</div>
+    </div>
+    <div class="step-body">
+      <div class="sg c3">
+        <!-- Deploy steps -->
+        <div class="col">
+          <div class="label">Copado pipeline — all green</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            ${[['PR merge → Copado triggered','14:32'],['PMD static analysis','14:33'],['Validate-only deploy to QA','14:35'],['Apex test run (6 methods)','14:36'],['Back-promotion to UAT','14:38'],['Smoke scripts executed','14:40'],['Deploy to Production','14:42']].map(([s,t],i)=>`
+              <div class="deploy-step anim-up d${Math.min(i+1,6)}">
+                <div style="color:var(--green);flex-shrink:0">${Icons.check}</div>
+                <span class="fs-10 t-secondary flex-1">${s}</span>
+                <span class="fs-9 t-faint" style="font-family:monospace">${t}</span>
+              </div>`).join('')}
+          </div>
+          <div class="card card-purple card-p" style="margin-top:auto">
+            <div class="fw-black fs-10 t-acn">Jira COMP-042 → Done</div>
+            <div class="fs-9 t-secondary mt-1">Status updated via Jira MCP. 3 Confluence pages live.</div>
+          </div>
+        </div>
+        <!-- Deliverables -->
+        <div class="col">
+          <div class="label">What was delivered</div>
+          ${[{cat:'Code',color:'var(--acn)',items:['ComplaintsAllocationHandler.cls · 187 lines','FLS/CRUD enforced · with sharing · ADR-001/004']},
+             {cat:'Tests',color:'var(--teal)',items:['6 test methods · 96% line coverage','AC-1 to AC-4 + NFR-1 + VIP-1 · bulk at 200']},
+             {cat:'Security',color:'var(--red)',items:['OWASP audit passed · FLS/CRUD reviewed','1 advisory encoded into lessons/']},
+             {cat:'Docs',color:'#F2A900',items:['Tech Design · Test Traceability · User Guide']}].map(d=>`
+            <div class="card card-p">
+              <div class="fw-bold fs-9 upper" style="color:${d.color};margin-bottom:6px">${d.cat}</div>
+              ${d.items.map(i=>`<div class="fs-10 t-secondary mb-1">· ${i}</div>`).join('')}
+            </div>`).join('')}
+          <div class="card card-p" style="background:var(--surface-3)">
+            <div class="g2">
+              <div style="text-align:center">
+                <div class="fs-9 t-muted mb-1">Traditional</div>
+                <div class="metric-big t-faint">3–5d</div>
+              </div>
+              <div style="text-align:center;background:var(--acn-lt);border-radius:var(--radius-sm);padding:8px">
+                <div class="fs-9 t-acndk mb-1 fw-bold">This story</div>
+                <div class="metric-big t-acn">~4h</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Lessons learned -->
+        <div class="col-scroll">
+          <div class="label" style="color:#F2A900">What the engine learned</div>
+          ${lessons.map((l,i)=>`
+            <div class="card card-p anim-right d${i+1}" style="border-color:rgba(242,169,0,0.18)">
+              <div class="flex items-center gap-2 mb-1 flex-wrap">
+                <code class="fs-9" style="color:#F2A900;font-family:Menlo,Monaco,monospace">${l.file}</code>
+                <span class="tag tag-amber">${l.via}</span>
+              </div>
+              <div class="fs-10 t-secondary" style="line-height:1.5">${l.lesson}</div>
+            </div>`).join('')}
+          <div class="card card-purple card-p" style="margin-top:auto">
+            <div class="fw-black fs-10 t-acn">Sprint-end: /retrospective</div>
+            <div class="fs-9 t-secondary mt-1" style="line-height:1.5">These 4 lessons join Sprint 1-3's 23 principles. Patterns verified 5+ times promote into skills. Next story starts smarter.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    ${footer('← Back','↺ Run Another Story', false, false, true)}
+  </div>`;
+}
+
+/* =========================================================
+   RENDER DISPATCHER
+   ========================================================= */
+function renderStage() {
+  const stage = document.getElementById('stage');
+  const renderers = {
+    jira: renderJira,
+    mcp: renderMcp,
+    template: renderTemplate,
+    ticket: renderTicket,
+    build: renderBuild,
+    gates: renderGates,
+    fault: renderFault,
+    confluence: renderConfluence,
+    success: renderSuccess,
+  };
+  const fn = renderers[currentStep];
+  if (fn) stage.innerHTML = fn();
+  renderNav();
+}
+
+/* =========================================================
+   INIT
+   ========================================================= */
+renderStage();
+</script>
+</body>
+</html>
