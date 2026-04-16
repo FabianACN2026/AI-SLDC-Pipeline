@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI-Native SDLC Journey — Accenture</title>
+<style>
+/* ─── RESET ─── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;-webkit-font-smoothing:antialiased}
+body{font-family:Arial,Helvetica,sans-serif;background:#08080f;color:#111;overflow:hidden;display:flex;flex-direction:column}
+
+/* ─── TOKENS ─── */
+:root{
+  /* brand */
+  --p:#A100FF; --pd:#7B00BF; --pdd:#460073;
+  --p8:rgba(161,0,255,.08); --p15:rgba(161,0,255,.15);
+  --p20:rgba(161,0,255,.20);
+  /* surface */
+  --s0:#fff; --s1:#FAFAFA; --s2:#F5F5F5; --s3:#EFEFEF;
+  /* border */
+  --b0:rgba(0,0,0,.06); --b1:rgba(0,0,0,.10);
+  /* text */
+  --t0:#0d0d0d; --t1:#3a3a3a; --t2:#6a6a7a; --t3:#a0a0b0;
+  /* status */
+  --g:#00875A; --g8:rgba(0,135,90,.08); --gb:rgba(0,135,90,.16);
+  --a:#905000; --a8:rgba(144,80,0,.07); --ab:rgba(144,80,0,.16);
+  --r:#c00030; --r8:rgba(192,0,48,.06); --rb:rgba(192,0,48,.14);
+  --bl:#0052CC; --bl8:rgba(0,82,204,.07); --blb:rgba(0,82,204,.15);
+  --tl:#007070; --tl8:rgba(0,112,112,.07);
+  /* radius */
+  --r4:4px; --r6:6px; --r8:8px; --r10:10px; --r12:12px;
+  /* shadow */
+  --sh1:0 1px 4px rgba(0,0,0,.07);
+  --sh2:0 2px 10px rgba(0,0,0,.09),0 1px 3px rgba(0,0,0,.05);
+}
+
+/* ─── TOPBAR ─── */
+.bar{
+  height:42px;flex-shrink:0;
+  background:rgba(8,8,15,.97);
+  border-bottom:1px solid rgba(255,255,255,.055);
+  display:flex;align-items:center;padding:0 18px;gap:0;
+}
+.bar-brand{display:flex;align-items:center;gap:9px;padding-right:14px;border-right:1px solid rgba(255,255,255,.07)}
+.bar-name{font-size:10.5px;font-weight:700;color:rgba(255,255,255,.82);letter-spacing:.04em;text-transform:uppercase}
+.bar-sub{font-size:9.5px;color:var(--p);font-weight:600;margin-left:12px}
+.bar-sep{width:1px;height:18px;background:rgba(255,255,255,.07);margin:0 6px;flex-shrink:0}
+
+/* ─── STEP NAV ─── */
+.nav{display:flex;align-items:center;flex:1;padding:0 6px;gap:1px}
+.nb{
+  display:flex;align-items:center;gap:5px;
+  padding:4px 8px;border-radius:var(--r6);
+  border:none;background:transparent;cursor:default;
+  color:rgba(255,255,255,.22);font-family:Arial,Helvetica,sans-serif;
+  transition:background .13s,color .13s;
+}
+.nb.vis{cursor:pointer;color:rgba(255,255,255,.48)}
+.nb.vis:hover{background:rgba(255,255,255,.05);color:rgba(255,255,255,.7)}
+.nb.cur{background:rgba(161,0,255,.16);color:#fff;cursor:default}
+.nd{
+  width:15px;height:15px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:7.5px;font-weight:700;flex-shrink:0;
+  background:rgba(255,255,255,.05);color:rgba(255,255,255,.28);
+}
+.nb.vis .nd{background:rgba(161,0,255,.22);color:var(--p)}
+.nb.cur .nd{background:var(--p);color:#fff}
+.nl{font-size:9px;font-weight:600;white-space:nowrap;letter-spacing:.02em}
+.nsep{color:rgba(255,255,255,.1);font-size:9px;padding:0 1px;flex-shrink:0}
+.bar-meta{font-size:8.5px;color:rgba(255,255,255,.18);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+
+/* ─── PROGRESS ─── */
+.prog{height:1.5px;flex-shrink:0;background:rgba(255,255,255,.04)}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--p),#b840ff);transition:width .5s cubic-bezier(.4,0,.2,1)}
+
+/* ─── STAGE / PANEL ─── */
+.stage{flex:1;min-height:0;position:relative;background:var(--s1)}
+.panel{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;
+  opacity:0;pointer-events:none;transition:opacity .18s;
+}
+.panel.on{opacity:1;pointer-events:all}
+
+/* ─── STEP CHROME ─── */
+.sh{                          /* step header */
+  padding:12px 22px 10px;
+  background:var(--s0);
+  border-bottom:1px solid var(--b0);
+  flex-shrink:0;
+}
+.sh-eye{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.22em;color:var(--p);margin-bottom:3px}
+.sh-ttl{font-family:'Arial Black',Arial,sans-serif;font-size:14.5px;font-weight:900;color:var(--t0);line-height:1.28;margin-bottom:2px}
+.sh-ttl em{font-style:normal;color:var(--p)}
+.sh-sub{font-size:9.5px;color:var(--t2);line-height:1.5;max-width:940px}
+.sb{                          /* step body */
+  flex:1;min-height:0;
+  padding:12px 16px 12px;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.sf{                          /* step footer */
+  height:44px;padding:0 22px;
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--s0);
+  border-top:1px solid var(--b0);
+  flex-shrink:0;
+}
+
+/* ─── GRID ─── */
+/* .grid is the full-height grid that fills .sb */
+.sb > .grid{
+  flex:1;min-height:0;
+  display:grid;
+  grid-template-rows:1fr;   /* single row → fills available height */
+  align-items:stretch;
+  gap:12px;
+}
+.grid.c2  {grid-template-columns:1fr 1fr}
+.grid.c3  {grid-template-columns:1fr 1fr 1fr}
+.grid.c53 {grid-template-columns:5fr 3fr}
+.grid.c121{grid-template-columns:1fr 2fr 1fr}
+.grid.c23 {grid-template-columns:2fr 3fr}
+/* inner grids (not direct children of .sb) */
+.igrid{display:grid;align-items:stretch;gap:8px}
+.igrid.c2{grid-template-columns:1fr 1fr}
+.igrid.c3{grid-template-columns:1fr 1fr 1fr}
+
+/* ─── COLUMN ─── */
+/* Direct child of a grid cell. Fills the cell. */
+.col{display:flex;flex-direction:column;gap:8px;height:100%;overflow:hidden}
+.col.scroll{overflow-y:auto;overflow-x:hidden}
+/* spacer that fills remaining space */
+.grow{flex:1;min-height:0}
+/* grow + scrollable */
+.grow.scroll{overflow-y:auto;overflow-x:hidden;padding-right:1px}
+
+/* ─── CARD ─── */
+.card{background:var(--s0);border:1px solid var(--b0);border-radius:var(--r8);padding:12px}
+.card.p16{padding:16px}
+.card.sm{padding:8px 10px}
+.card.ghost{background:transparent;border-color:transparent;padding:0}
+/* colour variants */
+.cv-pur{background:linear-gradient(135deg,rgba(161,0,255,.05),rgba(161,0,255,.02));border:1px solid var(--p15);border-radius:var(--r8);padding:12px}
+.cv-grn{background:var(--g8);border:1px solid var(--gb);border-radius:var(--r8);padding:12px}
+.cv-amb{background:var(--a8);border:1px solid var(--ab);border-radius:var(--r8);padding:12px}
+.cv-red{background:var(--r8);border:1px solid var(--rb);border-radius:var(--r8);padding:12px}
+.cv-blu{background:var(--bl8);border:1px solid var(--blb);border-radius:var(--r8);padding:12px}
+.cv-dk {background:rgba(8,5,18,.97);border:1px solid rgba(161,0,255,.14);border-radius:var(--r8);padding:12px}
+
+/* ─── BUTTONS ─── */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:6px 14px;border-radius:var(--r6);
+  font-family:Arial,Helvetica,sans-serif;
+  font-size:9.5px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.1em;
+  border:none;cursor:pointer;transition:all .14s;
+  white-space:nowrap;flex-shrink:0;
+}
+.btn-p{background:var(--p);color:#fff}
+.btn-p:hover{background:var(--pd);transform:translateY(-1px);box-shadow:0 3px 12px rgba(161,0,255,.28)}
+.btn-p:disabled{background:rgba(161,0,255,.28);cursor:not-allowed;transform:none;box-shadow:none}
+.btn-g{background:transparent;color:var(--pd);border:1px solid var(--p20)}
+.btn-g:hover{background:var(--p8)}
+.btn-dim{color:var(--t2);border:1px solid var(--b1);pointer-events:none;background:transparent}
+
+/* ─── LABEL ─── */
+.lbl{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.2em;color:var(--p);flex-shrink:0}
+.lbl.muted{color:var(--t2)}
+.lbl.amber{color:var(--a)}
+.lbl.green{color:var(--g)}
+
+/* ─── TAGS ─── */
+.tag{
+  display:inline-flex;align-items:center;
+  padding:2px 6px;border-radius:3px;border:1px solid;
+  font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+  flex-shrink:0;
+}
+.tg-p{color:var(--pd);background:var(--p8);border-color:var(--p15)}
+.tg-g{color:var(--g);background:var(--g8);border-color:var(--gb)}
+.tg-a{color:var(--a);background:var(--a8);border-color:var(--ab)}
+.tg-r{color:var(--r);background:var(--r8);border-color:var(--rb)}
+.tg-b{color:var(--bl);background:var(--bl8);border-color:var(--blb)}
+.tg-t{color:var(--tl);background:var(--tl8);border-color:rgba(0,112,112,.16)}
+.tg-n{color:var(--t2);background:var(--s2);border-color:var(--b0)}
+
+/* ─── STATUS ROWS ─── */
+.srow{display:flex;align-items:flex-start;gap:8px;padding:7px 9px;border-radius:var(--r6);border:1px solid;margin-bottom:5px;flex-shrink:0}
+.srow-ico{width:14px;flex-shrink:0;margin-top:1px;text-align:center;font-size:10px}
+.srow-lbl{font-size:9.5px;font-weight:600;color:var(--t0)}
+.srow-note{font-size:8.5px;color:var(--t2);margin-top:2px;line-height:1.4}
+.srow.pass{background:var(--g8);border-color:var(--gb)}.srow.pass .srow-ico{color:var(--g)}
+.srow.warn{background:var(--a8);border-color:var(--ab)}.srow.warn .srow-ico{color:var(--a)}
+.srow.fail{background:var(--r8);border-color:var(--rb)}.srow.fail .srow-ico{color:var(--r)}
+
+/* ─── CODE ─── */
+.codebar{
+  display:flex;align-items:center;gap:5px;
+  padding:6px 11px;
+  background:rgba(6,4,16,.99);
+  border-radius:var(--r8) var(--r8) 0 0;
+  border:1px solid rgba(161,0,255,.12);
+  border-bottom:1px solid rgba(255,255,255,.04);
+  flex-shrink:0;
+}
+.code{
+  background:rgba(7,5,16,.97);
+  border:1px solid rgba(161,0,255,.12);
+  border-top:none;
+  border-radius:0 0 var(--r8) var(--r8);
+  padding:10px 12px;
+  font-family:Menlo,Monaco,Consolas,monospace;
+  font-size:9px;color:#cfc6ea;line-height:1.65;
+  overflow:auto;
+}
+.code.standalone{border-radius:var(--r8);border-top:1px solid rgba(161,0,255,.12)}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot.r{background:#ff5f57}.dot.y{background:#febc2e}.dot.g{background:#28c840}
+.clbl{font-size:8.5px;color:rgba(255,255,255,.25);font-family:Menlo,Monaco,monospace;margin-left:5px}
+
+/* ─── TOOL ROWS ─── */
+.trow{
+  display:flex;align-items:flex-start;gap:9px;
+  padding:8px 10px;border-radius:var(--r6);
+  background:var(--s0);border:1px solid var(--b0);
+  margin-bottom:5px;flex-shrink:0;transition:border-color .2s;
+}
+.trow.done{border-color:rgba(0,135,90,.13)}
+.trow-ico{width:16px;height:16px;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center}
+.sp{width:14px;height:14px;border-radius:50%;border:1.5px solid rgba(161,0,255,.15);border-top-color:var(--p);animation:spin .75s linear infinite}
+.chk{width:14px;height:14px;border-radius:50%;background:var(--g);display:flex;align-items:center;justify-content:center}
+.idl{width:14px;height:14px;border-radius:50%;border:1px solid var(--b1);background:var(--s2)}
+.trow-body{flex:1;min-width:0}
+.trow-tool{font-size:9px;font-family:Menlo,Monaco,monospace;font-weight:600;color:var(--t0);margin-bottom:2px}
+.trow-arg {font-size:8px;font-family:Menlo,Monaco,monospace;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trow-res {font-size:8px;font-family:Menlo,Monaco,monospace;color:var(--g);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ─── SELECTOR BTNS (layers / spec / gates / faults) ─── */
+.selb{
+  width:100%;text-align:left;padding:9px 10px;border-radius:var(--r6);
+  border:1px solid transparent;background:transparent;cursor:pointer;
+  transition:all .13s;font-family:Arial,Helvetica,sans-serif;display:block;
+  flex-shrink:0;
+}
+.selb:hover{background:var(--s2);border-color:var(--b0)}
+.selb.on{background:var(--s0);border-color:var(--p15);box-shadow:var(--sh1)}
+
+/* ─── AGENT CARD ─── */
+.agc{
+  padding:10px 11px;border-radius:var(--r6);
+  background:var(--s0);border:1px solid var(--b0);
+  cursor:pointer;transition:all .13s;flex-shrink:0;
+}
+.agc:hover{border-color:var(--b1);box-shadow:var(--sh1)}
+.agc.on{border-color:var(--p15);box-shadow:var(--sh1)}
+.pbar{height:2.5px;background:var(--s2);border-radius:2px;overflow:hidden;margin-top:6px}
+.pbar-fill{height:100%;border-radius:2px;transition:width .18s ease}
+
+/* ─── GATE BTN ─── */
+.gateb{
+  width:100%;text-align:left;padding:10px 11px;border-radius:var(--r6);
+  border:1px solid var(--b0);background:var(--s0);cursor:pointer;
+  transition:all .13s;font-family:Arial,Helvetica,sans-serif;flex-shrink:0;
+}
+.gateb:hover{box-shadow:var(--sh1)}
+.gateb.on{border-color:var(--p15);box-shadow:var(--sh1)}
+.gateb.done{border-color:var(--gb);background:var(--g8)}
+
+/* ─── JIRA ─── */
+.jira-bar{background:#0052CC;border-radius:var(--r8) var(--r8) 0 0;padding:7px 13px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.jira-body{background:var(--s0);border:1px solid rgba(0,82,204,.1);border-top:none;border-radius:0 0 var(--r8) var(--r8);padding:13px;flex:1;overflow-y:auto}
+.acr{display:flex;gap:7px;align-items:flex-start;padding:6px 9px;border-radius:var(--r4);border:1px solid;margin-bottom:4px}
+.acr.ok{background:var(--g8);border-color:var(--gb)}
+.acr.warn{background:var(--a8);border-color:var(--ab)}
+.acid{font-size:8.5px;font-weight:700;flex-shrink:0;width:28px}
+.actx{font-size:9.5px;color:var(--t1);line-height:1.4;flex:1}
+
+/* ─── CONFLUENCE ─── */
+.ch1{font-size:13px;font-weight:700;color:var(--t0);margin-bottom:7px}
+.ch2{font-size:10.5px;font-weight:700;color:var(--t0);margin:10px 0 5px;padding-bottom:3px;border-bottom:1px solid var(--b0)}
+.cp{font-size:9.5px;color:var(--t1);line-height:1.6;margin-bottom:7px}
+.ctbl{width:100%;border-collapse:collapse;font-size:9px;margin-bottom:10px}
+.ctbl th{background:var(--s2);padding:5px 9px;text-align:left;font-weight:700;color:var(--t2);font-size:8px;text-transform:uppercase;letter-spacing:.05em;border:1px solid var(--b0)}
+.ctbl td{padding:5px 9px;border:1px solid var(--b0);color:var(--t1);line-height:1.4}
+.ctbl td:first-child{font-weight:600;color:var(--t0)}
+.cbadge{display:inline-flex;padding:1px 6px;border-radius:3px;font-size:8px;font-weight:700}
+.cg{background:var(--g8);color:var(--g);border:1px solid var(--gb)}
+.cb{background:var(--bl8);color:var(--bl);border:1px solid var(--blb)}
+.cv{background:var(--p8);color:var(--pd);border:1px solid var(--p15)}
+.cinfo{background:var(--bl8);border-left:2.5px solid var(--bl);border-radius:0 var(--r4) var(--r4) 0;padding:7px 11px;margin-bottom:9px;font-size:9.5px;color:var(--t1)}
+.csucc{background:var(--g8);border-left:2.5px solid var(--g);border-radius:0 var(--r4) var(--r4) 0;padding:7px 11px;margin-bottom:9px;font-size:9.5px;color:var(--t1)}
+
+/* ─── SUCCESS ─── */
+.dstep{display:flex;align-items:center;gap:7px;padding:6px 9px;border-radius:var(--r4);background:var(--g8);border:1px solid var(--gb);flex-shrink:0}
+.big-n{font-size:26px;font-family:'Arial Black',Arial,sans-serif;font-weight:900;line-height:1}
+
+/* ─── MISC ─── */
+.divider{height:1px;background:var(--b0);flex-shrink:0}
+.blink::after{content:'|';color:var(--p);animation:blink 1s step-end infinite}
+
+/* ─── TYPOGRAPHY ─── */
+.t0{color:var(--t0)}.t1{color:var(--t1)}.t2{color:var(--t2)}.t3{color:var(--t3)}
+.tp{color:var(--p)}.tpd{color:var(--pd)}.tg{color:var(--g)}.ta{color:var(--a)}.tr{color:var(--r)}.tb{color:var(--bl)}
+.f7{font-size:7px}.f8{font-size:8px}.f9{font-size:9px}.f10{font-size:10px}.f11{font-size:11px}.f12{font-size:12px}.f13{font-size:13px}
+.bold{font-weight:700}.bolder{font-family:'Arial Black',Arial,sans-serif;font-weight:900}
+.upper{text-transform:uppercase;letter-spacing:.08em}
+.mono{font-family:Menlo,Monaco,Consolas,monospace}
+
+/* ─── SPACING ─── */
+.gap4{gap:4px}.gap6{gap:6px}.gap8{gap:8px}.gap10{gap:10px}.gap12{gap:12px}
+.mb4{margin-bottom:4px}.mb6{margin-bottom:6px}.mb8{margin-bottom:8px}.mb10{margin-bottom:10px}.mb12{margin-bottom:12px}
+.mt4{margin-top:4px}.mt6{margin-top:6px}.mt8{margin-top:8px}.mt10{margin-top:10px}.mt12{margin-top:12px}
+.mta{margin-top:auto}
+
+/* ─── FLEX HELPERS ─── */
+.row{display:flex;align-items:center}
+.row.top{align-items:flex-start}
+.row.wrap{flex-wrap:wrap}
+.ml{margin-left:auto}
+.w100{width:100%}
+.sh0{flex-shrink:0}
+
+/* ─── ANIMATIONS ─── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:translateX(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.au{animation:fadeUp .3s ease forwards}
+.ai{animation:fadeIn .22s ease forwards}
+.as{animation:slideIn .28s ease forwards}
+.d1{animation-delay:.07s;opacity:0}.d2{animation-delay:.14s;opacity:0}
+.d3{animation-delay:.21s;opacity:0}.d4{animation-delay:.28s;opacity:0}
+.d5{animation-delay:.35s;opacity:0}.d6{animation-delay:.42s;opacity:0}
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(161,0,255,.18);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="bar-brand">
+    <svg width="17" height="17" viewBox="0 0 32 32" fill="#A100FF"><path d="M0 22.6L17.66 16.03L0 9.13V0L30.24 12.18V19.75L0 32V22.6Z"/></svg>
+    <span class="bar-name">AI-Augmented SDLC</span>
+    <div style="width:1px;height:16px;background:rgba(255,255,255,.07);margin:0 8px"></div>
+    <span class="bar-sub">AI-Native Story Journey</span>
+  </div>
+  <div class="nav" id="nav"></div>
+  <span class="bar-meta">Apr 2026</span>
+</div>
+
+<div class="prog"><div class="prog-fill" id="pf" style="width:0%"></div></div>
+<div class="stage" id="stage"></div>
+
+<script>
+/* ── ICONS ── */
+const I = {
+  chk:`<svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1.5,5.5 4.5,8.5 9.5,2.5"/></svg>`,
+  wrn:`<svg width="9" height="9" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5.5 1L10.5 10H.5Z"/><line x1="5.5" y1="4.5" x2="5.5" y2="6.8"/><circle cx="5.5" cy="8.2" r=".6" fill="currentColor"/></svg>`,
+  aR:`<svg width="11" height="9" viewBox="0 0 13 11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><line x1="1" y1="5.5" x2="12" y2="5.5"/><polyline points="7.5,1 12,5.5 7.5,10"/></svg>`,
+  aL:`<svg width="11" height="9" viewBox="0 0 13 11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><line x1="12" y1="5.5" x2="1" y2="5.5"/><polyline points="5.5,1 1,5.5 5.5,10"/></svg>`,
+  jira:`<svg width="13" height="13" viewBox="0 0 32 32" fill="white"><path d="M15.85.78L8.07 8.56l4.68 4.68 3.1-3.1 7.6 7.6-7.6 7.6-3.1-3.1-4.68 4.68 7.78 7.78a1 1 0 001.42 0l11.55-11.56a1 1 0 000-1.41L17.27.78a1 1 0 00-1.42 0z"/><path d="M5.87 10.57L.78 15.66a1 1 0 000 1.42l5.09 5.09 4.68-4.68-2.5-2.5 2.5-2.5z"/></svg>`,
+  sf:`<svg width="13" height="13" viewBox="0 0 32 32" fill="white"><path d="M16 3C9 3 3 9 3 16s6 13 13 13 13-6 13-13S23 3 16 3zm0 22C11 25 7 21 7 16S11 7 16 7s9 4 9 9-4 9-9 9z"/><circle cx="16" cy="16" r="5" fill="white"/></svg>`,
+  file:`<svg width="11" height="12" viewBox="0 0 13 15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M7.5 1H3a1 1 0 00-1 1v11a1 1 0 001 1h7a1 1 0 001-1V5.5L7.5 1z"/><polyline points="7.5,1 7.5,5.5 12,5.5"/></svg>`,
+  code:`<svg width="11" height="9" viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><polyline points="4,1 1,5.5 4,10"/><polyline points="11,1 14,5.5 11,10"/><line x1="8.5" y1=".5" x2="6.5" y2="10.5"/></svg>`,
+  shld:`<svg width="11" height="12" viewBox="0 0 13 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6.5 1L2 3v4.5c0 2.8 2.3 5.1 4.5 6 2.2-.9 4.5-3.2 4.5-6V3L6.5 1z"/></svg>`,
+  test:`<svg width="11" height="11" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4.5 1v4.5L2 11h9L8.5 5.5V1"/><line x1="4" y1="1" x2="9" y2="1"/></svg>`,
+  docs:`<svg width="11" height="11" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><rect x="2" y="1" width="9" height="11" rx="1.5"/><line x1="4" y1="4.5" x2="9" y2="4.5"/><line x1="4" y1="6.5" x2="9" y2="6.5"/><line x1="4" y1="8.5" x2="6.5" y2="8.5"/></svg>`,
+  lock:`<svg width="10" height="11" viewBox="0 0 11 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1.5" y="5.5" width="8" height="6.5" rx="1.5"/><path d="M3.5 5.5V3.5a2 2 0 014 0v2"/><circle cx="5.5" cy="9" r=".9" fill="currentColor" stroke="none"/></svg>`,
+  zap:`<svg width="10" height="12" viewBox="0 0 11 13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><polyline points="7.5,1 3.5,6.5 7.5,6.5 4.5,12"/></svg>`,
+  flag:`<svg width="11" height="11" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="2.5" y1="1" x2="2.5" y2="12"/><path d="M2.5 1h8l-2 3.5 2 3.5H2.5"/></svg>`,
+  layers:`<svg width="11" height="11" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><polyline points="1,5 6.5,2 12,5 6.5,8 1,5"/><polyline points="1,8 6.5,11 12,8"/></svg>`,
+  brain:`<svg width="11" height="11" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M5 3C5 2 5.8 1 6.5 1S8 1.5 8 3"/><path d="M5 3C4 3 2 4 2 6s1 2.5 3 2.5"/><path d="M8 3c1 0 3 1 3 3s-1 2.5-3 2.5"/><line x1="5" y1="8.5" x2="5" y2="11"/><line x1="8" y1="8.5" x2="8" y2="11"/><line x1="6.5" y1="8.5" x2="6.5" y2="10"/><line x1="3.5" y1="6" x2="9.5" y2="6"/></svg>`,
+  rocket:`<svg width="11" height="11" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6.5 1s3.5 1 4.5 4.5c-1 1-1.8 1-2.8 1L6.5 5c0-1 0-2 0-4z"/><path d="M8.5 6.5l-2 4.5-2-2 4.5-2.5z"/><path d="M3.5 8.5C2.5 9.5 2.5 10.5 2.5 11.5 3.5 11.5 4.5 11.5 5.5 10.5"/></svg>`,
+  gt:`<svg width="8" height="8" viewBox="0 0 32 32" fill="currentColor"><path d="M0 22.6L17.66 16.03L0 9.13V0L30.24 12.18V19.75L0 32V22.6Z"/></svg>`
+};
+
+/* ── STEPS ── */
+const STEPS=[
+  {id:'jira',   short:'Jira'},  {id:'mcp',       short:'MCP'},
+  {id:'layers', short:'Layers'},{id:'spec',       short:'Spec'},
+  {id:'build',  short:'Build'}, {id:'gates',      short:'Gates'},
+  {id:'faults', short:'Faults'},{id:'confluence', short:'Docs'},
+  {id:'done',   short:'Done'},
+];
+
+let cur='jira', vis=new Set(['jira']), ss={};
+
+/* ── NAV ── */
+function renderNav(){
+  const idx=STEPS.findIndex(s=>s.id===cur);
+  document.getElementById('nav').innerHTML=STEPS.map((s,i)=>{
+    const active=s.id===cur, visited=vis.has(s.id), past=i<idx;
+    const cls='nb'+(active?' cur':visited?' vis':'');
+    const dot=past?`<span style="color:var(--p)">${I.chk}</span>`:(i+1);
+    return `<button class="${cls}" onclick="vis.has('${s.id}')&&goTo('${s.id}')" >
+      <span class="nd">${dot}</span>
+      <span class="nl">${s.short}</span>
+    </button>${i<STEPS.length-1?'<span class="nsep">›</span>':''}`;
+  }).join('');
+  document.getElementById('pf').style.width=(idx/(STEPS.length-1)*100)+'%';
+}
+function goTo(id){cur=id;vis.add(id);renderNav();render();}
+function next(){const i=STEPS.findIndex(s=>s.id===cur);if(i<STEPS.length-1)goTo(STEPS[i+1].id);}
+function prev(){const i=STEPS.findIndex(s=>s.id===cur);if(i>0)goTo(STEPS[i-1].id);}
+
+/* ── FOOTER ── */
+function foot(back,fwd,dis=false,isFirst=false,isLast=false){
+  const L=isFirst?`<button class="btn btn-dim">${I.aL}</button>`:`<button class="btn btn-g" onclick="prev()">${I.aL}&nbsp;${back}</button>`;
+  const R=isLast?`<button class="btn btn-p" onclick="goTo('jira')">↺&nbsp;New Story</button>`
+    :`<button class="btn btn-p" onclick="${dis?'':' next()'}" ${dis?'disabled':''}>${fwd}&nbsp;${I.aR}</button>`;
+  return `<div class="sf">${L}${R}</div>`;
+}
+
+/* ════════════════════════════════════════════════
+   STEP 1 — JIRA
+   ════════════════════════════════════════════════ */
+function renderJira(){
+  if(!ss.jira) ss.jira={phase:'idle',fixes:new Set(),flagFixed:false};
+  const s=ss.jira;
+  const acs=[
+    {id:'AC-1',text:'Given Case Priority = High → assigned to Complaints_L2 queue',ok:true},
+    {id:'AC-2',text:'Given Case Priority = Critical → Complaints_Escalation within 30s',ok:true},
+    {id:'AC-3',text:'Given bulk insert 200 Cases → all allocated within governor limits',ok:true},
+    {id:'AC-4',text:s.flagFixed?'Given Priority changes to Critical → re-assigns automatically · Bulk 200 within limits':'Given existing Case Priority changes to Critical → re-assigns automatically',ok:s.flagFixed,warn:!s.flagFixed},
+  ];
+  const issues=[
+    {label:'AC-4 missing governor limit NFR',fix:'Added: "Bulk 200 re-assignments within governor limits"'},
+    {label:'FLS requirements not specified',fix:'Added: isAccessible() on Case.Priority, isUpdateable() on OwnerId'},
+  ];
+  const allFixed=s.fixes.size>=issues.length, approved=s.phase==='approved';
+
+  let rhs='';
+  if(s.phase==='idle'){
+    rhs=`<div class="card"><div class="row gap8 mb8">
+      <div style="width:26px;height:26px;border-radius:6px;background:#0052CC;display:flex;align-items:center;justify-content:center">${I.jira}</div>
+      <div><div class="f11 bold t0">Rovo Work Readiness Checker</div><div class="f9 t2">Validates story before AI pipeline entry</div></div>
+    </div>
+    <button class="btn btn-p w100" onclick="rovoCheck()">${I.zap}&nbsp;Run Readiness Check</button></div>`;
+  } else if(s.phase==='checking'){
+    rhs=`<div class="card"><div class="lbl mb8">Rovo is analysing…</div>
+    ${['Parsing story structure…','Checking AC completeness…','Validating NFR coverage…','Cross-referencing domain model…'].map((t,i)=>`
+      <div class="row gap8 f9 t2 mb6 au d${i+1}"><div class="sp"></div>${t}</div>`).join('')}
+    </div>`;
+  } else if(!allFixed&&s.phase!=='approved'){
+    rhs=`<div class="cv-amb mb8 ai">
+      <div class="row gap8 mb6"><span style="color:var(--a)">${I.wrn}</span><span class="bold f10 ta">${issues.length-s.fixes.size} issue${issues.length-s.fixes.size>1?'s':''} to fix</span></div>
+      <div class="f9 t2 mb8">Rovo has drafted fixes. Accept each to update the story automatically.</div>
+      ${issues.map((issue,i)=>s.fixes.has(i)?'':`
+        <div style="background:rgba(0,0,0,.03);border:1px solid var(--b0);border-radius:6px;padding:9px;margin-bottom:6px">
+          <div class="bold f9 mb4 ta">${I.wrn}&nbsp;${issue.label}</div>
+          <div class="f9 t2 mb6">Rovo suggests: <em class="t1">"${issue.fix}"</em></div>
+          ${s.accepting===i?`<div class="row gap6 f9 t2"><div class="sp"></div>Updating…</div>`
+            :`<button class="btn btn-g" style="font-size:8.5px;padding:5px 10px" onclick="acceptFix(${i})">Accept &amp; update</button>`}
+        </div>`).join('')}
+      ${s.fixes.size?`<div class="divider mb6"></div>`+[...s.fixes].map(i=>`<div class="row gap6 f9 tg mb4">${I.chk}&nbsp;${issues[i].label} — fixed</div>`).join(''):''}
+    </div>`;
+  } else if(allFixed&&!approved){
+    rhs=`<div class="card ai mb8"><div class="lbl muted mb6">All fixes accepted</div>
+    ${[['Story structure','As a / I want / So that ✓'],['AC-1 to AC-3 format','Given/When/Then ✓'],['Objects referenced','Case, Queue, SLA_Milestone__c'],['AC-4 governor NFR','Added — Bulk 200 within limits'],['FLS specified','isAccessible() + isUpdateable()']].map(([l,n])=>`
+      <div class="srow pass"><span class="srow-ico">${I.chk}</span><div><div class="srow-lbl">${l}</div><div class="srow-note">${n}</div></div></div>`).join('')}
+    <button class="btn btn-p w100 mt8" onclick="approveStory()">${I.chk}&nbsp;Architect approves COMP-042</button></div>`;
+  } else if(approved){
+    rhs=`<div class="cv-grn mb8 ai">
+      <div class="row gap8 mb4"><span class="tg">${I.chk}</span><span class="bold f11 tg">COMP-042 approved</span></div>
+      <div class="f9 t1">All 4 ACs · FLS specified · Governor limits NFR included</div>
+    </div>
+    <div class="cv-pur ai">
+      <div class="lbl mb6">What happens next</div>
+      <div class="f10 t1" style="line-height:1.55">Developer opens Claude Code and references <strong>COMP-042</strong>. Architecture Agent reads the validated story live via Jira MCP — no copy-paste.</div>
+      <div class="row gap6 mt8"><div style="width:5px;height:5px;border-radius:50%;background:var(--p)"></div><span class="f9 tpd bold">Next: Developer prompt → MCP reads Jira</span></div>
+    </div>`;
+  }
+
+  return `<div class="panel on">
+  <div class="sh"><div class="sh-eye">Step 1 of 9 — Story Readiness</div>
+  <div class="sh-ttl">The journey starts in <em>Jira</em> — Rovo validates before AI touches it</div>
+  <div class="sh-sub">BA writes the story. Rovo flags gaps inline. Issues are fixed before anything enters the AI pipeline.</div></div>
+  <div class="sb"><div class="grid c53">
+    <div class="col">
+      <div class="jira-bar">${I.jira}<span class="bold f11" style="color:white">COMP-042</span>
+        <span style="color:rgba(255,255,255,.35)">·</span><span style="font-size:9.5px;color:rgba(255,255,255,.6)">Complaints · Sprint 4</span>
+        <div class="ml row gap6"><span class="tag" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.12);color:rgba(255,255,255,.7)">Story</span>
+        <span class="tag" style="background:rgba(255,153,0,.65);border-color:transparent;color:white">In Refinement</span></div>
+      </div>
+      <div class="jira-body">
+        <div class="bolder f13 t0 mb6" style="line-height:1.3">Auto-allocate Complaints cases by urgency + SLA tier</div>
+        <div class="row wrap gap4 mb10">
+          <span class="tag tg-b">Feature</span><span class="tag tg-p">Complaints · R1</span>
+          <span class="tag tg-a">High Priority</span><span class="tag tg-n">8 pts</span>
+        </div>
+        <div class="lbl muted mb4">Description</div>
+        <div class="f9 t1 mb10" style="line-height:1.6">As a <strong>Complaints Triage Manager</strong>, I want new Case records automatically routed to the correct queue by urgency and SLA tier, so high-priority complaints reach the right team — within a 30-second SLA.</div>
+        <div class="lbl muted mb4">Acceptance Criteria</div>
+        ${acs.map(ac=>`<div class="acr ${ac.ok?'ok':'warn'}">
+          <span class="acid ${ac.ok?'tg':'ta'}">${ac.id}</span>
+          <span class="actx">${ac.text}</span>
+          ${ac.warn?`<span class="tag tg-a ml">⚠ NFR</span>`:''}
+          ${ac.ok&&ac.id==='AC-4'&&s.flagFixed?`<span class="tag tg-g ml">Fixed</span>`:''}
+        </div>`).join('')}
+        <div class="lbl muted mt10 mb4">Technical Notes</div>
+        <div class="f9 t2" style="line-height:1.55">Objects: Case, Queue, SLA_Milestone__c · ADR: ADR-001${s.fixes.has(1)?` · <span class="tg">FLS: isAccessible() on Case.Priority, isUpdateable() on OwnerId</span>`:''}</div>
+      </div>
+    </div>
+    <div class="col scroll">${rhs}</div>
+  </div></div>
+  ${foot('','Story Approved',!approved,true)}</div>`;
+}
+window.rovoCheck=()=>{ss.jira.phase='checking';render();setTimeout(()=>{ss.jira.phase='issues';render();},1700)};
+window.acceptFix=i=>{ss.jira.accepting=i;render();setTimeout(()=>{ss.jira.fixes.add(i);if(i===0)ss.jira.flagFixed=true;ss.jira.accepting=null;ss.jira.phase=ss.jira.fixes.size>=2?'allfixed':'issues';render();},1000)};
+window.approveStory=()=>{ss.jira.phase='approved';render();};
+
+/* ════════════════════════════════════════════════
+   STEP 2 — MCP
+   ════════════════════════════════════════════════ */
+const MCP_CALLS=[
+  {tool:'mcp__jira__get_issue',tag:'Jira MCP',color:'#0052CC',ms:0,arg:'issue_key:"COMP-042"',res:'{ summary, AC×4, sprint:4, priority:High }'},
+  {tool:'mcp__sf__describe',tag:'SF DX MCP',color:'#00A0DC',ms:500,arg:'objectType:"Case"',res:'{ fields:[Status,Priority,OwnerId,Queue__c,…] }'},
+  {tool:'mcp__sf__query',tag:'SF DX MCP',color:'#00A0DC',ms:1000,arg:"SOQL: SELECT Id,DeveloperName FROM Group WHERE Type='Queue'",res:'[Complaints_L1, Complaints_L2, Complaints_Escalation]'},
+  {tool:'mcp__sf__describe',tag:'SF DX MCP',color:'#00A0DC',ms:1450,arg:'objectType:"SLA_Milestone__c"',res:'{ fields:[Target_Date__c,Status__c,Case__c] }'},
+  {tool:'read_file',tag:'Context',color:'#A100FF',ms:1900,arg:'.claude/context/domain-model.md',res:'Case lifecycle, queue patterns loaded'},
+  {tool:'read_file',tag:'Context',color:'#A100FF',ms:2250,arg:'.claude/context/security-policy.md',res:'with sharing · CRUD/FLS policy for Complaints'},
+  {tool:'read_file',tag:'Context',color:'#A100FF',ms:2600,arg:'.claude/lessons/_consolidated-principles.md',res:'23 standing rules from Sprints 1-3'},
+  {tool:'read_file',tag:'Context',color:'#A100FF',ms:2950,arg:'.claude/adrs/001-trigger-framework.md',res:'TriggerHandler base class · no logic in trigger files'},
+];
+const EX='Generate ticket.md for COMP-042 — auto-allocate Complaints cases';
+function renderMcp(){
+  if(!ss.mcp) ss.mcp={typed:'',started:false,prog:-1,done:false};
+  const s=ss.mcp;
+  return `<div class="panel on">
+  <div class="sh"><div class="sh-eye">Step 2 of 9 — Developer Prompt + MCP</div>
+  <div class="sh-ttl">Developer types a prompt. Claude Code <em>reads Jira live</em> — then queries the org.</div>
+  <div class="sh-sub">The developer references the story ID. Claude Code fetches everything via MCP — no copy-paste anywhere.</div></div>
+  <div class="sb"><div class="grid c23">
+    <!-- Terminal + status -->
+    <div class="col">
+      <div class="sh0">
+        <div class="codebar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+          <span class="clbl">claude-code — complaints-r1</span>
+          <div class="ml"><span class="tag tg-p">Architecture Agent</span></div>
+        </div>
+        <div class="code" style="min-height:82px">
+          <div style="color:rgba(255,255,255,.25);margin-bottom:6px">$ claude code — sprint 4 · context loaded ✓</div>
+          <div class="row gap6">
+            <span style="color:var(--p);font-size:12px">›</span>
+            ${s.started
+              ?`<span>${s.typed}${s.typed.length<EX.length?'<span class="blink"></span>':''}</span>`
+              :`<input id="mcpIn" type="text" placeholder="e.g. Generate ticket for COMP-042" value="${s.typed}"
+                  onkeydown="if(event.key==='Enter'&&this.value.trim())mcpStart()"
+                  oninput="ss.mcp.typed=this.value"
+                  style="flex:1;background:transparent;border:none;outline:none;color:rgba(255,255,255,.8);font-family:Menlo,Monaco,monospace;font-size:10px;caret-color:var(--p)" autofocus/>`}
+          </div>
+          ${!s.started?`<div style="color:rgba(255,255,255,.18);font-size:8.5px;margin-top:7px">Press ↵ or click button below</div>`:''}
+          ${s.started&&s.typed.length>=EX.length&&s.prog<0?`<div style="color:#4ade80;font-size:9px;margin-top:7px">✓ Architecture Agent — reading Jira MCP…</div>`:''}
+        </div>
+      </div>
+      ${!s.started?`<button class="btn btn-p" onclick="mcpStart()">${I.zap}&nbsp;Try example prompt</button>`:''}
+      ${s.done?`<div class="cv-pur ai">
+        <div class="row gap8 mb8"><div style="width:16px;height:16px;border-radius:50%;background:var(--p);display:flex;align-items:center;justify-content:center">${I.chk}</div><span class="bold f11 t0">All context loaded — zero hallucination</span></div>
+        <div class="igrid c2" style="gap:5px">${[['Story','COMP-042 + all 4 AC'],['SF Schema','Case, Queue, SLA live'],['Queues','3 verified from org'],['Security','FLS policy loaded'],['Principles','23 Sprint 1-3 rules'],['ADRs','001 trigger framework']].map(([k,v])=>`
+          <div class="row gap4 f9"><span class="tg">${I.chk}</span><span class="t2"><strong class="t1">${k}:</strong> ${v}</span></div>`).join('')}
+        </div>
+      </div>`:''}
+    </div>
+    <!-- MCP calls -->
+    <div class="col">
+      <div class="lbl mb4">${s.prog>=0?`MCP calls — ${Math.min(s.prog+1,MCP_CALLS.length)} of ${MCP_CALLS.length}`:'MCP calls — waiting for prompt…'}</div>
+      <div class="grow scroll">
+        ${MCP_CALLS.map((c,i)=>{
+          const vis=i<=s.prog, done=i<s.prog||(i===s.prog&&s.done);
+          return `<div class="trow${done?' done':''}" style="${vis?'':'opacity:.22'}">
+            <div class="trow-ico">${vis?(done?`<div class="chk">${I.chk.replace('stroke="currentColor"','stroke="white"')}</div>`:`<div class="sp"></div>`):`<div class="idl"></div>`}</div>
+            <div class="trow-body">
+              <div class="row gap6 mb4">
+                <span class="tag" style="background:${c.color}15;border-color:${c.color}28;color:${c.color};font-size:7px">${c.tag}</span>
+                <code class="f8 t2 mono">${c.tool}</code>
+              </div>
+              <div class="trow-arg">↳ ${c.arg}</div>
+              ${done?`<div class="trow-res">← ${c.res}</div>`:''}
+            </div>
+          </div>`;}).join('')}
+      </div>
+    </div>
+  </div></div>
+  ${foot('← Back','Context Loaded',!s.done)}</div>`;
+}
+window.mcpStart=()=>{
+  ss.mcp.started=true;render();
+  let i=0;const t=setInterval(()=>{i++;ss.mcp.typed=EX.slice(0,i);render();if(i>=EX.length){clearInterval(t);setTimeout(fireMcp,250);}},28);
+};
+function fireMcp(){MCP_CALLS.forEach((c,i)=>setTimeout(()=>{ss.mcp.prog=i;if(i===MCP_CALLS.length-1)setTimeout(()=>{ss.mcp.done=true;render();},500);render();},c.ms));}
+
+/* ════════════════════════════════════════════════
+   STEP 3 — LAYERS
+   ════════════════════════════════════════════════ */
+const LAYERS=[
+  {id:'story',  lbl:'COMP-042 Story',       sub:'What arrived via Jira MCP',           col:'#0052CC',ico:I.file,
+   note:'The validated story provides the "what". The layers below provide the "how".',
+   files:[{n:'COMP-042 story text',d:'As a Triage Manager I want… ✓',on:true},{n:'AC-1 to AC-4',d:'Given/When/Then · all 4 validated',on:true},{n:'Sprint 4 context',d:'R1 · Complaints Programme · 8pts',on:true}]},
+  {id:'found',  lbl:'Layer 1 · Foundation', sub:'Accenture SBG · Git submodule · immutable',col:'#A100FF',ico:I.layers,
+   note:'Immutable Accenture IP. Rules load path-scoped — only relevant patterns activate per file type.',
+   files:[{n:'rules/apex-security.md',d:'ALWAYS loaded — with sharing, FLS, CRUD',on:true,always:true},{n:'agents/architecture-agent.md',d:'ticket.md synthesis — active now',on:true,always:true},{n:'rules/apex-patterns.md',d:'Loaded on .cls files — naming, governor limits',on:true},{n:'skills/code-gen/SKILL.md',d:'Apex/LWC/Flow generation agent',on:true},{n:'skills/test-architect/',d:'Test strategy + SObject factory patterns',on:true}]},
+  {id:'ext',    lbl:'Layer 2 · Extensions', sub:'Activated by /onboarding · Copado active',col:'#009A9A',ico:I.zap,
+   note:'Extensions activate at onboarding via symlinks. Only relevant packages load.',
+   files:[{n:'extensions/copado/rules/',d:'Copado CI/CD patterns · pipeline gates',on:true},{n:'extensions/ncino/',d:'NOT active — no nCino in this engagement',on:false},{n:'extensions/vlocity/',d:'NOT active — no OmniStudio',on:false}]},
+  {id:'ctx',    lbl:'Layer 3 · Context',    sub:'Generated from live org · Sprint 0',   col:'#00875A',ico:I.brain,
+   note:'Auto-discovered from org metadata during /onboarding. Never hand-written.',
+   files:[{n:'context/domain-model.md',d:'All objects, fields, relationships from live org',on:true},{n:'context/security-policy.md',d:'FLS profiles, sharing model, data classification',on:true},{n:'context/quality-gates.md',d:'G1-G5 studio gate definitions',on:true}]},
+  {id:'lessons',lbl:'Layer 4 · Lessons',   sub:'Sprint 1-3 learnings · 23 principles',  col:'#F2A900',ico:I.rocket,
+   note:'The compounding advantage. 23 principles are distilled wisdom from Sprints 1-3.',
+   files:[{n:'lessons/_consolidated-principles.md',d:'23 rules · highest priority · loaded first',on:true,always:true},{n:'lessons/apex-patterns.md',d:'31 raw entries — naming, null-check patterns',on:true},{n:'lessons/security-findings.md',d:'8 entries — FLS edge cases for Complaints',on:true}]},
+];
+function renderLayers(){
+  if(!ss.layers) ss.layers={sel:'found'};
+  const s=ss.layers, layer=LAYERS.find(l=>l.id===s.sel);
+  return `<div class="panel on">
+  <div class="sh"><div class="sh-eye">Step 3 of 9 — Context Layers</div>
+  <div class="sh-ttl">The story activates <em>four engine layers</em> — context, skills, and agents all load</div>
+  <div class="sh-sub">The .claude/ repository is the engine's intelligence. Four layers activate simultaneously: immutable foundation, platform extensions, client context, and accumulated lessons.</div></div>
+  <div class="sb"><div class="grid c121">
+    <!-- Layer selector -->
+    <div class="col scroll">
+      <div class="lbl mb4">Activated layers</div>
+      ${LAYERS.map((l,i)=>`
+        <div>
+          <button class="selb${s.sel===l.id?' on':''}" onclick="selLayer('${l.id}')" style="${s.sel===l.id?'border-color:'+l.col+'25;background:'+l.col+'04':''}">
+            <div class="row gap8">
+              <div style="width:26px;height:26px;border-radius:6px;background:${l.col}12;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:${l.col}">${l.ico}</div>
+              <div style="flex:1;min-width:0">
+                <div class="bold f10 t0" style="${s.sel===l.id?'color:'+l.col:''}">${l.lbl}</div>
+                <div class="f9 t2" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.sub}</div>
+              </div>
+              <div style="width:14px;height:14px;border-radius:50%;background:${l.col};display:flex;align-items:center;justify-content:center;flex-shrink:0;color:white">${I.chk}</div>
+            </div>
+          </button>
+          ${i<LAYERS.length-1?`<div style="width:1.5px;height:6px;margin:1px auto;border-radius:1px;background:linear-gradient(180deg,${LAYERS[i].col}30,${LAYERS[i+1].col}30)"></div>`:''}
+        </div>`).join('')}
+    </div>
+    <!-- File list -->
+    <div class="col">
+      <div class="lbl mb4" style="color:${layer.col}">${layer.lbl} — files</div>
+      <div class="card mb8" style="flex-shrink:0"><div class="f9 t1" style="line-height:1.55">${layer.note}</div></div>
+      <div class="grow scroll">
+        ${layer.files.map(f=>`
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:6px;margin-bottom:5px;background:${f.on?(f.always?layer.col+'07':'var(--s0)'):'rgba(0,0,0,.02)'};border:1px solid ${f.on?(f.always?layer.col+'18':'var(--b0)'):'transparent'};opacity:${f.on?1:.38}">
+            <span style="color:${f.on?layer.col:'var(--t3)'};margin-top:1px;flex-shrink:0">▸</span>
+            <div style="flex:1;min-width:0">
+              <div class="row wrap gap4 mb4">
+                <code class="f9 bold mono" style="color:${f.on?layer.col:'var(--t2)'}">${f.n}</code>
+                ${f.always?`<span class="tag tg-p" style="font-size:7px">always loaded</span>`:''}
+                ${!f.on?`<span class="tag tg-n" style="font-size:7px">inactive</span>`:''}
+              </div>
+              <div class="f9 t2">${f.d}</div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>
+    <!-- Session log -->
+    <div class="col">
+      <div class="lbl mb4">Session log</div>
+      <div class="cv-dk" style="flex-shrink:0">
+        <div class="f9 mono" style="color:#cfc6ea;line-height:1.7">&gt; Client: Complaints<br>&gt; Sprint: 4 · R1<br>&gt; Domain: 12 objects ✓<br>&gt; Queues: 3 verified ✓<br>&gt; 23 principles ✓<br>&gt; Copado: ✓<br>&gt; MCP: Jira ✓ SF ✓<br>&gt; Agent: architecture<br>&gt; Ready.</div>
+      </div>
+      <div class="cv-pur grow">
+        <div class="lbl mb8">Path-scoped rules</div>
+        ${[['Always loaded','apex-security.md, git-workflow.md','var(--p)'],['On .cls files','apex-patterns.md, governor-limits.md','var(--tl)'],['On .js/.html','lwc-patterns.md, a11y-rules.md','var(--g)']].map(([k,v,c])=>`
+          <div style="padding:8px 9px;border-radius:5px;margin-bottom:6px;background:${c}0a;border:1px solid ${c}1a">
+            <div class="bold f9 mb4" style="color:${c}">${k}</div>
+            <div class="f9 t2">${v}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+  </div></div>
+  ${foot('← Back','Context Loaded — Generate Spec')}</div>`;
+}
+window.selLayer=id=>{ss.layers.sel=id;render();};
+
+/* ════════════════════════════════════════════════
+   STEP 4 — SPEC (ticket.md)
+   ════════════════════════════════════════════════ */
+const SPECS=[
+  {k:'func',lbl:'Functional Scope',col:'#A100FF',src:'Jira AC',body:`- Automatic allocation of Case records to Queues on insert/update\n- Priority = High → Complaints_L2\n- Priority = Critical → Complaints_Escalation (within 30s SLA)\n- Priority change triggers re-assignment (AC-4 NFR: bulk 200 records)`},
+  {k:'objs',lbl:'Objects Affected',col:'#0052CC',src:'SF DX MCP live query',body:`Case (standard): Status, Priority, OwnerId\n  Relationships: SLA_Milestone__c (lookup)\nQueue: Complaints_L1, Complaints_L2, Complaints_Escalation\n  Source: SELECT Id,DeveloperName FROM Group WHERE Type='Queue'\nSLA_Milestone__c: Target_Date__c, Status__c, Case__c`},
+  {k:'sec', lbl:'Security Requirements',col:'#C80028',src:'security-policy.md',body:`Class MUST use \`with sharing\`\nCRUD: Schema.sObjectType.Case.isUpdateable() before OwnerId write\nFLS: isAccessible() on Case.Priority, Account.VIP_Client__c\nSharing: Respect org-wide Default Private on Case`},
+  {k:'nfr', lbl:'NFR Thresholds',col:'#009A9A',src:'AC + lessons',body:`Allocation within 30s SLA (AC-2 critical path)\nBulkified: handle up to 200 records per trigger fire\nGovernor limits: single SOQL for Queue lookup (static Map cache)\nCPU budget: allocation logic < 50% of 10s limit`},
+  {k:'acs', lbl:'Acceptance Criteria',col:'#00875A',src:'Jira COMP-042',body:`1. GIVEN Case.Priority='High' WHEN trigger fires THEN OwnerId=Complaints_L2\n2. GIVEN Case.Priority='Critical' WHEN fires THEN <30s\n3. GIVEN 200 Cases bulk insert THEN all allocated, 0 LimitException\n4. GIVEN Case.Priority changes to 'Critical' THEN queue re-assigned`},
+];
+function renderSpec(){
+  if(!ss.spec) ss.spec={sel:'func',approved:false};
+  const s=ss.spec, sec=SPECS.find(x=>x.k===s.sel);
+  return `<div class="panel on">
+  <div class="sh"><div class="sh-eye">Step 4 of 9 — Machine-Precise Spec</div>
+  <div class="sh-ttl">Architecture Agent produces <em>ticket.md</em> — the build pivot point</div>
+  <div class="sh-sub">Jira AC is written for humans. ticket.md is machine-precise — every object verified against the live org. All 4 agents work from this approved spec.</div></div>
+  <div class="sb"><div class="grid c121">
+    <!-- Section selector -->
+    <div class="col scroll">
+      <div class="lbl mb4">Sections</div>
+      ${SPECS.map(sp=>`<button class="selb${s.sel===sp.k?' on':''}" onclick="selSpec('${sp.k}')" style="${s.sel===sp.k?'border-color:'+sp.col+'25;background:'+sp.col+'04':''}">
+        <div class="bold f10 t0" style="${s.sel===sp.k?'color:'+sp.col:''}">${sp.lbl}</div>
+        <div class="f9 t2 mt4">${sp.src}</div>
+      </button>`).join('')}
+      <div class="mta">
+        ${s.approved
+          ?`<div class="cv-grn"><div class="bold f10 tg">✓ ticket.md approved</div><div class="f9 t1 mt4">4 agents can begin</div></div>`
+          :`<button class="btn btn-g w100" onclick="approveSpec()">${I.lock}&nbsp;Architect approves</button>`}
+      </div>
+    </div>
+    <!-- Editor -->
+    <div class="col">
+      <div class="codebar">
+        <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+        <span class="clbl">ticket-COMP-042-v1.md</span>
+        <div class="ml row gap6"><span class="tag tg-p">Architecture Agent</span><span class="tag tg-g">Sprint 4</span></div>
+      </div>
+      <div class="code grow" style="border-radius:0 0 8px 8px;border-top:none;cursor:default">
+        <div class="f8 mono mb10 pb8" style="color:rgba(255,255,255,.18);border-bottom:1px solid rgba(255,255,255,.05)"># COMP-042 — Auto-allocate Complaints by Urgency + SLA<br># /generate-ticket · Sprint 4 · Architecture Agent v1.2.0</div>
+        ${SPECS.map(sp=>`
+          <div onclick="selSpec('${sp.k}')" style="padding:7px 10px;border-radius:5px;border-left:2px solid ${s.sel===sp.k?sp.col:'transparent'};cursor:pointer;transition:all .12s;${s.sel===sp.k?'background:'+sp.col+'0a':''}" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background='${s.sel===sp.k?sp.col+'0a':''}'">
+            <div class="f10 bold mono mb4" style="color:${s.sel===sp.k?sp.col:'rgba(255,255,255,.35)'}">## ${sp.lbl}</div>
+            <pre class="f9 mono" style="white-space:pre-wrap;color:${s.sel===sp.k?'rgba(255,255,255,.78)':'rgba(255,255,255,.26)'};line-height:1.6">${sp.body}</pre>
+            ${s.sel===sp.k?`<div class="row gap6 mt8 pt6" style="border-top:1px solid rgba(255,255,255,.06)"><span class="f8 t3">Source:</span><span class="tag" style="background:${sp.col}15;border-color:${sp.col}28;color:${sp.col};font-size:7px">${sp.src}</span></div>`:''}
+          </div>`).join('')}
+      </div>
+    </div>
+    <!-- Why it matters -->
+    <div class="col scroll">
+      <div class="lbl mb4">Why this matters</div>
+      ${[[I.flag,'Precision','Jira says "auto-allocate". ticket.md names the exact field, SOQL, sharing model.'],[I.shld,'No hallucination','Every field verified against the live org — field absent → spec error, not a code bug.'],[I.lock,'Security baked in','with sharing and FLS checks are explicit before any code is generated.'],[I.zap,'4 agents, 1 spec','Code, Tests, Security, Docs read the same source. Consistency is guaranteed.'],[I.brain,'Lessons shape it','23 Sprint 1-3 principles shaped this spec — the engine learned from past corrections.']].map(([ic,t,d])=>`
+        <div class="card sh0">
+          <div class="row gap8 mb4"><span style="color:var(--p)">${ic}</span><span class="bold f10 t0">${t}</span></div>
+          <div class="f9 t1" style="line-height:1.5">${d}</div>
+        </div>`).join('')}
+    </div>
+  </div></div>
+  ${foot('← Back','Spec Approved — Launch Agents',!s.approved)}</div>`;
+}
+window.selSpec=k=>{ss.spec.sel=k;render();};
+window.approveSpec=()=>{ss.spec.approved=true;render();};
+
+/* ════════════════════════════════════════════════
+   STEP 5 — BUILD
+   ════════════════════════════════════════════════ */
+const AGENTS=[
+  {id:'code',lbl:'Code Gen',ico:I.code,col:'#A100FF',skill:'code-gen/SKILL.md',dur:2600,
+   outputs:['ComplaintsAllocationHandler.cls (with sharing · 187 lines)','ComplaintsAllocationTrigger.trigger (delegator only)','Static Map cache — single SOQL at class load','isUpdateable() + isAccessible() FLS checks'],
+   preview:`public with sharing class ComplaintsAllocationHandler
+    extends TriggerHandler {
+
+  private static final Map<String, Id> QUEUE_MAP;
+  static {
+    for (Group q : [SELECT Id, DeveloperName FROM Group
+        WHERE Type = 'Queue' AND DeveloperName IN :QUEUE_NAMES]) {
+      QUEUE_MAP.put(q.DeveloperName, q.Id);
+    }
+  }
+
+  public override void beforeInsert(List<Case> cases) {
+    if (!Schema.sObjectType.Case.isUpdateable()) return;
+    if (!Case.Priority.getDescribe().isAccessible()) return;
+    allocate(cases);
+  }
+}`},
+  {id:'test',lbl:'Test Gen',ico:I.test,col:'#009A9A',skill:'test-architect/SKILL.md',dur:3100,
+   outputs:['ComplaintsAllocationHandlerTest.cls (6 methods)','SObject factory via TestDataFactory','Bulk: 200 records within limits','Assert.areEqual() — not deprecated System.assertEquals()'],
+   preview:`@IsTest
+private class ComplaintsAllocationHandlerTest {
+  @IsTest
+  static void test_high_routesToL2() {
+    Case c = TestDataFactory.createCase(
+      new Map<String,Object>{ 'Priority' => 'High' }
+    );
+    Test.startTest(); insert c; Test.stopTest();
+    Assert.areEqual(
+      QUEUE_MAP.get('Complaints_L2'),
+      [SELECT OwnerId FROM Case WHERE Id=:c.Id].OwnerId,
+      'High priority should route to L2'
+    );
+  }
+  // +5 more: Critical, bulk, re-assign, null, VIP
+}`},
+  {id:'sec',lbl:'Security',ico:I.shld,col:'#C80028',skill:'security-auditor/SKILL.md',dur:2100,
+   outputs:['✓ with sharing on all classes','✓ FLS isAccessible() on Case.Priority','✓ CRUD isUpdateable() before write','⚠ Static SOQL block — governor note added'],
+   preview:`=== Security Audit: COMP-042 ===
+
+[PASS] with sharing: ComplaintsAllocationHandler ✓
+[PASS] FLS check: Case.Priority isAccessible() ✓
+[PASS] CRUD check: Case.OwnerId isUpdateable() ✓
+[PASS] SOQL injection: bind variables only ✓
+[WARN] Static SOQL initialiser — null-guard needed
+       Fix: if(QUEUE_MAP.isEmpty()) re-query
+       → captured in lessons/apex-patterns.md
+[PASS] No PII fields referenced ✓
+
+Result: PASS · 1 advisory (encoded as lesson)`},
+  {id:'docs',lbl:'Docs',ico:I.docs,col:'#F2A900',skill:'doc-generator/SKILL.md',dur:2400,
+   outputs:['Technical Design Doc (Confluence format)','Test Traceability Matrix (AC-1 to AC-4)','User Guide: queue routing behaviour','Release Notes draft'],
+   preview:`## Technical Design — COMP-042
+### Queue Allocation Service
+
+Trigger: ComplaintsAllocationTrigger (before insert/update)
+Handler: ComplaintsAllocationHandler (with sharing)
+Pattern: Static Map cache — ADR-004
+
+Queue Routing:
+  Critical + VIP → Complaints_Escalation
+  High           → Complaints_L2
+  Medium/Low     → Complaints_L1
+
+Coverage: 6 tests · 96% lines · 100% branches
+→ Auto-publish to Confluence via MCP`},
+];
+function renderBuild(){
+  if(!ss.build) ss.build={started:false,prog:{},done:{},sel:'code'};
+  const s=ss.build, allDone=Object.keys(s.done).length===AGENTS.length, ag=AGENTS.find(a=>a.id===s.sel);
+  return `<div class="panel on">
+  <div class="sh"><div class="sh-eye">Step 5 of 9 — Parallel Agentic Build</div>
+  <div class="sh-ttl"><em>4 agents</em> fire simultaneously from the approved spec</div>
+  <div class="sh-sub">One ticket.md. Four separate context windows. Code, Tests, Security, and Documentation in parallel.</div></div>
+  <div class="sb"><div class="grid c23">
+    <!-- Agent list -->
+    <div class="col">
+      ${!s.started&&!allDone?`<button class="btn btn-p sh0" onclick="launchAgents()">${I.zap}&nbsp;Launch 4 Parallel Agents</button>`:''}
+      ${s.started&&!allDone?`<div class="row gap8 f9 t2 sh0"><div class="sp"></div>Agents running in parallel…</div>`:''}
+      ${allDone?`<div class="cv-grn sh0"><div class="bold f10 tg">✓ All 4 complete — ready for human review</div></div>`:''}
+      <div class="grow scroll">
+        ${AGENTS.map(a=>`<div class="agc${s.sel===a.id?' on':''} mb6" onclick="selAg('${a.id}')" style="${s.sel===a.id?'border-color:'+a.col+'22':''}">
+          <div class="row gap8 mb6">
+            <span style="color:${a.col}">${a.ico}</span>
+            <span class="bold f11 t0" style="${s.sel===a.id?'color:'+a.col:''}">${a.lbl} Agent</span>
+            <span class="f8 t2 ml">${a.skill}</span>
+            ${s.done[a.id]?`<span class="tg">${I.chk}</span>`:''}
+          </div>
+          <div class="pbar"><div class="pbar-fill" style="width:${s.prog[a.id]||0}%;background:${a.col}"></div></div>
+          ${s.done[a.id]?`<div class="mt6">${a.outputs.slice(0,2).map(o=>`<div class="f9 t2">· ${o}</div>`).join('')}</div>`:''}
+        </div>`).join('')}
+      </div>
+    </div>
+    <!-- Output -->
+    <div class="col">
+      <div class="row gap8 sh0 mb8">
+        <span style="color:${ag.col}">${ag.ico}</span>
+        <span class="bolder f12" style="color:${ag.col}">${ag.lbl} Agent</span>
+        <span class="tag tg-p">${ag.skill}</span>
+        ${s.done[ag.id]?`<span class="tag tg-g ml">Complete</span>`:''}
+      </div>
+      ${s.done[ag.id]
+        ?`<div style="display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;overflow:hidden">
+            <div class="sh0" style="display:flex;flex-direction:column;gap:5px">
+              ${ag.outputs.map(o=>`<div class="card sm row gap8"><span style="color:${ag.col}">▸</span><span class="f9 t1">${o}</span></div>`).join('')}
+            </div>
+            <div class="codebar sh0"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="clbl">${ag.id==='code'?'ComplaintsAllocationHandler.cls':ag.id==='test'?'ComplaintsAllocationHandlerTest.cls':ag.id==='sec'?'audit-COMP-042.txt':'technical-design.md'}</span></div>
+            <div class="code grow" style="border-radius:0 0 8px 8px;border-top:none;overflow-y:auto">${ag.preview}</div>
+          </div>`
+        :`<div style="flex:1;display:flex;align-items:center;justify-content:center">
+          ${s.started
+            ?`<div style="text-align:center"><div style="width:44px;height:44px;border-radius:50%;border:2.5px solid ${ag.col}18;border-top-color:${ag.col};animation:spin .75s linear infinite;margin:0 auto 10px"></div><div class="bolder f12" style="color:${ag.col}">${ag.lbl} running…</div><div class="f9 t2 mt6">Reading ticket.md + skill context</div></div>`
+            :`<div style="text-align:center;opacity:.28"><div style="font-size:28px;margin-bottom:8px">${ag.ico}</div><div class="f11 t2">Launch agents to see output</div></div>`}
+          </div>`}
+    </div>
+  </div></div>
+  ${foot('← Back','All Agents Done — Review Gates',!allDone)}</div>`;
+}
+window.selAg=id=>{ss.build.sel=id;render();};
+window.launchAgents=()=>{
+  ss.build.started=true;render();
+  AGENTS.forEach(a=>{let t=0;const iv=setInterval(()=>{t++;ss.build.prog[a.id]=t/20*100;render();if(t>=20){clearInterval(iv);ss.build.done[a.id]=true;render();}},a.dur/20);});
+};
+
+/* ════════════════════════════════════════════════
+   STEP 6 — GATES
+   ════════════════════════════════════════════════ */
+const GATES=[
+  {id:'arch',role:'Architect',lbl:'Spec + Code Architecture',col:'#A100FF',
+   checks:[{t:'ticket.md aligns with ADR-001 trigger framework',s:'pass'},{t:'Queue assignment matches ADR-004 (static Map)',s:'pass'},{t:'Static SOQL block → governor note documented',s:'warn'},{t:'AC-4 re-assignment NFR in spec',s:'pass'},{t:'FLS requirements fully specified',s:'pass'}],
+   comment:'Static SOQL block is fine but needs null-guard before test context. Running /update-learnings — encoded into lessons/apex-patterns.md.',
+   lesson:'lessons/apex-patterns.md: "Static SOQL initialisers need null-guard: if(QUEUE_MAP.isEmpty())"'},
+  {id:'dev',role:'Senior Developer',lbl:'Code Review',col:'#009A9A',
+   checks:[{t:'with sharing declared on handler class',s:'pass'},{t:'TriggerHandler base class pattern correct',s:'pass'},{t:'CRUD/FLS checks before every DML',s:'pass'},{t:'Single SOQL via Map cache — ADR-004',s:'pass'},{t:'No logic in trigger file itself',s:'pass'}],
+   comment:'Clean. Queue map cache is correct. Added debug log on unrecognised-priority branch for ops visibility.',
+   lesson:'No new lesson — existing patterns sufficient.'},
+  {id:'qa',role:'QA Engineer',lbl:'Test Coverage Review',col:'#00875A',
+   checks:[{t:'All 4 AC scenarios covered by tests',s:'pass'},{t:'Bulk test: 200 records within limits',s:'pass'},{t:'Assert.areEqual used (not deprecated)',s:'pass'},{t:'TestDataFactory for all SObject creation',s:'pass'},{t:'Negative test: exact default queue ID asserted',s:'warn'}],
+   comment:'Good coverage. Negative scenario added assertion for exact default queue. /test-coverage: 96% line, 100% branch.',
+   lesson:'lessons/test-patterns.md: "Negative test: assert exact default queue Id, not absence of exception"'},
+];
+function renderGates(){
+  if(!ss.gates) ss.gates={sel:'arch',appr:{}};
+  const s=ss.gates, g=GATES.find(x=>x.id===s.sel), allOk=GATES.every(x=>s.appr[x.id]), done=s.appr[g.id];
+  return `<div class="panel on">
+  <div class="sh"><div class="sh-eye">Step 6 of 9 — Human Review Gates</div>
+  <div class="sh-ttl">Three humans review before anything <em>ships</em></div>
+  <div class="sh-sub">Hooks are deterministic. Humans are the quality standard. Every correction is captured into lessons/ — no knowledge is wasted.</div></div>
+  <div class="sb"><div class="grid c121">
+    <div class="col scroll">
+      <div class="lbl mb4">Review gates</div>
+      ${GATES.map(x=>`<button class="gateb${s.sel===x.id?' on':''} ${s.appr[x.id]?'done':''} mb6" onclick="selGate('${x.id}')">
+        <div class="row gap8">
+          <div style="width:16px;height:16px;border-radius:50%;${s.appr[x.id]?'background:var(--g)':'border:1.5px solid var(--b1)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;color:white">
+            ${s.appr[x.id]?I.chk:''}
+          </div>
+          <div>
+            <div class="bold f11 t0" style="${s.sel===x.id?'color:'+x.col:''}">${x.role}</div>
+            <div class="f9 t2">${x.lbl}</div>
+          </div>
+        </div>
+      </button>`).join('')}
+      <div class="mta" style="display:flex;flex-direction:column;gap:7px">
+        ${allOk?`<div class="cv-grn"><div class="bold f10 tg">All gates cleared</div><div class="f9 t1 mt4">Copado pipeline ready</div></div>`:''}
+        <button class="btn" style="background:var(--r8);color:var(--r);border:1px solid var(--rb);font-size:8.5px" onclick="goTo('faults')">${I.wrn}&nbsp;See fault paths</button>
+      </div>
+    </div>
+    <div class="col">
+      <div class="row gap8 mb8 sh0"><span class="bolder f12" style="color:${g.col}">${g.role}</span><span class="f10 t2">${g.lbl}</span>${done?`<span class="tag tg-g ml">Approved</span>`:''}</div>
+      <div class="grow scroll">
+        ${g.checks.map(c=>`<div class="srow ${c.s}"><span class="srow-ico">${c.s==='pass'?I.chk:I.wrn}</span><div><div class="srow-lbl">${c.t}</div></div></div>`).join('')}
+        <div class="card mt8"><div class="f8 bold upper t2 mb6">Reviewer comment</div><div class="f9 t1" style="line-height:1.55;font-style:italic">"${g.comment}"</div></div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="lbl mb4">Actions</div>
+      ${done
+        ?`<div class="cv-grn ai sh0"><div class="bold f10 tg">✓ Approved by ${g.role}</div><div class="f9 t1 mt4">Lesson captured via /update-learnings</div></div>`
+        :`<button class="btn btn-p w100 sh0" style="background:${g.col}" onclick="approveGate('${g.id}')">✓ Approve — ${g.role}</button>
+         <button class="btn sh0 w100" style="background:var(--r8);color:var(--r);border:1px solid var(--rb)" onclick="goTo('faults')">✗ Flag issue → Fault paths</button>`}
+      <div class="cv-pur grow">
+        <div class="lbl mb6">Learning captured</div>
+        <div class="f9 t1 mono" style="line-height:1.6;background:rgba(161,0,255,.05);border:1px solid var(--p15);padding:8px;border-radius:5px">${g.lesson}</div>
+      </div>
+    </div>
+  </div></div>
+  ${foot('← Back','All Gates Passed → Deploy',!allOk)}</div>`;
+}
+window.selGate=id=>{ss.gates.sel=id;render();};
+window.approveGate=id=>{if(!ss.gates)ss.gates={sel:'arch',appr:{}};ss.gates.appr[id]=true;render();};
+
+/* ════════════════════════════════════════════════
+   STEP 7 — FAULTS
+   ════════════════════════════════════════════════ */
+const FAULTS=[
+  {id:'gate',sev:'Medium',stage:'Human Gate',ico:I.lock,col:'#A100FF',
+   title:'Reviewer flags a defect in generated code',
+   scenario:'Gate 2 (Dev): allocation handler doesn\'t null-check Case.Priority — NullPointerException risk on Cases with no Priority set.',
+   steps:['Dev marks gate FAILED with specific comment','ticket.md updated: add null-check NFR for Priority','Code Gen re-runs on affected method only','Gate 2 re-review — now passing'],
+   lesson:'lessons/apex-patterns.md: "Always null-check Case.Priority — not required in schema"',impact:'+2 hours',enc:true},
+  {id:'copado',sev:'Low',stage:'Copado CI/CD',ico:I.zap,col:'#F2A900',
+   title:'PMD scan fails on deployed code',
+   scenario:'Copado\'s PMD scan flags "AvoidDeeplyNestedIfStmts" — the if/else chain depth exceeds ruleset threshold.',
+   steps:['Copado marks build FAILED — PR blocked from QA','"/diagnose" identifies root cause: code-gen skill gap','Code Gen re-runs: nested if → Map lookup pattern','PMD clean — pipeline continues'],
+   lesson:'lessons/apex-patterns.md: "Use Map<String,Id> lookup — not if/else chains >3 levels"',impact:'+1.5 hours',enc:true},
+  {id:'uat',sev:'High',stage:'UAT — Late Stage',ico:I.flag,col:'#C80028',
+   title:'Business rule discovered in UAT',
+   scenario:'UAT: VIP account Cases must always escalate regardless of Priority. Rule existed in a SharePoint doc never loaded at Sprint 0.',
+   steps:['Architect runs /generate-ticket with VIP rule included','domain-model.md: Account.VIP_Client__c field added','ticket.md v2 — VIP override logic added','Delta regeneration: code + tests for VIP scenario only','Gates re-run on changed files only'],
+   lesson:'context/domain-model.md: "Account.VIP_Client__c overrides all queue assignment"',impact:'+1.5 sprints',enc:true,prev:'Would have been caught if /onboarding included the SharePoint doc.'},
+  {id:'rot',sev:'Low',stage:'Long Session',ico:I.brain,col:'#009A9A',
+   title:'Context rot — output degrades mid-session',
+   scenario:'Dev has been in same session 45+ minutes. Code Gen starts ignoring naming conventions established early in session.',
+   steps:['/diagnose → "Context rot" identified','Run /compact to recover CLAUDE.md','Fresh session — context reloads from .claude/','Generation resumes with full context intact'],
+   lesson:'Session protocol: single-task sessions <30 min. /compact recovers CLAUDE.md.',impact:'+20 min',enc:false},
+];
+function renderFaults(){
+  if(!ss.faults) ss.faults={sel:'gate'};
+  const s=ss.faults, f=FAULTS.find(x=>x.id===s.sel);
+  const sc=f.sev==='High'?'var(--r)':f.sev==='Medium'?'var(--a)':'var(--tl)';
+  return `<div class="panel on">
+  <div class="sh"><div class="sh-eye">Step 7 of 9 — Fault Paths</div>
+  <div class="sh-ttl">What happens when something <span style="color:var(--r)">goes wrong</span></div>
+  <div class="sh-sub">Every failure has a governed recovery. Every recovery creates a lesson. The same failure never happens twice.</div></div>
+  <div class="sb"><div class="grid c121">
+    <div class="col scroll">
+      <div class="lbl mb4">Failure scenarios</div>
+      ${FAULTS.map(x=>{const c=x.sev==='High'?'var(--r)':x.sev==='Medium'?'var(--a)':'var(--tl)';return `<button class="selb${s.sel===x.id?' on':''} mb6" onclick="selFault('${x.id}')" style="${s.sel===x.id?'border-color:'+x.col+'22;background:'+x.col+'04':''}">
+        <div class="row gap6 mb4"><span style="color:${x.col}">${x.ico}</span><span class="tag" style="background:${c}12;border-color:${c}25;color:${c};font-size:7px">${x.sev}</span></div>
+        <div class="bold f10 t0" style="line-height:1.3">${x.title}</div>
+        <div class="f9 t2 mt4">${x.stage}</div>
+      </button>`;}).join('')}
+      <div class="cv-pur mta"><div class="bold f9 tp mb4">The principle</div><div class="f9 t1" style="line-height:1.5">Every fault has a recovery. Every recovery creates a lesson. Same failure never repeats.</div></div>
+    </div>
+    <div class="col">
+      <div class="card sh0 mb8" style="background:${f.col}06;border-color:${f.col}18;display:flex;gap:10px;align-items:flex-start">
+        <span style="color:${f.col};font-size:16px;flex-shrink:0">${f.ico}</span>
+        <div>
+          <div class="row wrap gap6 mb4"><div class="bolder f12 t0">${f.title}</div><span class="tag" style="background:${sc}12;border-color:${sc}25;color:${sc}">${f.sev}</span></div>
+          <div class="f9 t1" style="line-height:1.55">${f.scenario}</div>
+        </div>
+      </div>
+      <div class="lbl mb6">Recovery path — detected at: ${f.stage}</div>
+      <div class="grow scroll">
+        ${f.steps.map((st,i)=>`<div class="row top gap10 card mb6">
+          <div style="width:18px;height:18px;border-radius:50%;background:${f.col}aa;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:white;flex-shrink:0;margin-top:1px">${i+1}</div>
+          <div class="f9 t1" style="line-height:1.5">${st}</div>
+        </div>`).join('')}
+        ${f.prev?`<div class="cv-amb sh0"><div class="bold f9 ta mb4">⚠ Prevention note</div><div class="f9 t1">${f.prev}</div></div>`:''}
+      </div>
+    </div>
+    <div class="col">
+      <div>
+        <div class="lbl mb4">Time impact</div>
+        <div class="big-n mt4" style="color:${f.col}">${f.impact}</div>
+        <div class="f9 t2 mt4">vs traditional: often days</div>
+      </div>
+      <div class="cv-pur grow">
+        <div class="lbl mb6">${f.enc?'✓ Encoded into engine':'↺ Protocol applied'}</div>
+        <div class="f9 t1 mono mb8" style="line-height:1.6;background:rgba(161,0,255,.05);border:1px solid var(--p15);padding:8px;border-radius:5px">${f.lesson}</div>
+        ${f.enc?`<div class="f9 t1">Every developer benefits from the next /sprint-start.</div>`:''}
+      </div>
+    </div>
+  </div></div>
+  ${foot('← Back','Back on Track — Docs')}</div>`;
+}
+window.selFault=id=>{ss.faults.sel=id;render();};
+
+/* ════════════════════════════════════════════════
+   STEP 8 — CONFLUENCE
+   ════════════════════════════════════════════════ */
+const CPAGES=[
+  {id:'tech',lbl:'Technical Design',ico:I.docs,html:`
+    <div class="ch1">COMP-042 — Queue Allocation Service: Technical Design</div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">
+      <span class="cbadge cv">Auto-generated · doc-generator v1.2.0</span>
+      <span class="cbadge cb">Sprint 4 · R1</span>
+      <span class="cbadge cg">✓ Published via MCP</span>
+    </div>
+    <div class="cinfo"><strong>Purpose:</strong> Technical implementation of automatic Case routing. Generated from ticket-COMP-042-v1.md.</div>
+    <div class="ch2">Architecture</div>
+    <table class="ctbl"><thead><tr><th>Component</th><th>Class/File</th><th>Pattern</th></tr></thead><tbody>
+      <tr><td>Trigger</td><td><code>ComplaintsAllocationTrigger</code></td><td>Delegator only · ADR-001</td></tr>
+      <tr><td>Handler</td><td><code>ComplaintsAllocationHandler</code></td><td>with sharing · TriggerHandler</td></tr>
+      <tr><td>Queue lookup</td><td>Static Map&lt;String,Id&gt;</td><td>Single SOQL · ADR-004</td></tr>
+    </tbody></table>
+    <div class="ch2">Queue Routing Logic</div>
+    <table class="ctbl"><thead><tr><th>Condition</th><th>Target Queue</th><th>Notes</th></tr></thead><tbody>
+      <tr><td>Account.VIP_Client__c = true</td><td>Complaints_Escalation</td><td>Overrides all Priority rules</td></tr>
+      <tr><td>Priority = Critical</td><td>Complaints_Escalation</td><td>SLA &lt;30s enforced</td></tr>
+      <tr><td>Priority = High</td><td>Complaints_L2</td><td>Standard high-priority</td></tr>
+      <tr><td>Priority = Medium / null</td><td>Complaints_L1</td><td>Default · null-safe</td></tr>
+    </tbody></table>
+    <div class="csucc"><strong>Dependencies:</strong> TriggerHandler.cls · TestDataFactory.cls · ADR-001 · ADR-004</div>`},
+  {id:'trace',lbl:'Test Traceability',ico:I.test,html:`
+    <div class="ch1">COMP-042 — Test Traceability Matrix</div>
+    <div style="display:flex;gap:5px;margin-bottom:10px">
+      <span class="cbadge cg">96% Line Coverage</span>
+      <span class="cbadge cg">100% Branch Coverage</span>
+      <span class="cbadge cb">6 Test Methods</span>
+    </div>
+    <div class="ch2">Acceptance Criteria Coverage</div>
+    <table class="ctbl"><thead><tr><th>AC</th><th>Description</th><th>Test Method</th><th>Result</th></tr></thead><tbody>
+      <tr><td>AC-1</td><td>High → Complaints_L2</td><td><code>test_high_routesToL2</code></td><td><span class="cbadge cg">✓ PASS</span></td></tr>
+      <tr><td>AC-2</td><td>Critical → Escalation &lt;30s</td><td><code>test_critical_escalation</code></td><td><span class="cbadge cg">✓ PASS</span></td></tr>
+      <tr><td>AC-3</td><td>Bulk 200 within limits</td><td><code>test_bulk200_withinLimits</code></td><td><span class="cbadge cg">✓ PASS</span></td></tr>
+      <tr><td>AC-4</td><td>Priority change re-assigns</td><td><code>test_priorityUpdate_reAssigns</code></td><td><span class="cbadge cg">✓ PASS</span></td></tr>
+      <tr><td>NFR-1</td><td>Null Priority → default L1</td><td><code>test_nullPriority_defaultsL1</code></td><td><span class="cbadge cg">✓ PASS</span></td></tr>
+      <tr><td>VIP-1</td><td>VIP overrides Priority</td><td><code>test_vipAccount_escalation</code></td><td><span class="cbadge cg">✓ PASS</span></td></tr>
+    </tbody></table>
+    <div class="csucc">All ACs covered · 0 test failures · Executed: Sprint 4, Day 8 via Copado</div>`},
+  {id:'guide',lbl:'User Guide',ico:I.docs,html:`
+    <div class="ch1">Queue Allocation — How It Works</div>
+    <div class="cinfo"><strong>What changed:</strong> From Sprint 4, Cases automatically route to the correct team. No manual assignment needed.</div>
+    <div class="ch2">Routing Rules</div>
+    <table class="ctbl"><thead><tr><th>Condition</th><th>Assigned to</th></tr></thead><tbody>
+      <tr><td>Account is a VIP client</td><td>Complaints Escalation <em>(always — overrides Priority)</em></td></tr>
+      <tr><td>Priority = Critical</td><td>Complaints Escalation</td></tr>
+      <tr><td>Priority = High</td><td>Complaints L2</td></tr>
+      <tr><td>Priority = Medium or blank</td><td>Complaints L1</td></tr>
+    </tbody></table>
+    <div class="ch2">Can I override it?</div>
+    <div class="cp">Yes. You can manually reassign the queue at any time. Automatic allocation is the starting point — your judgment takes precedence.</div>`},
+];
+function renderConfluence(){
+  if(!ss.conf) ss.conf={sel:'tech',pub:false,pbing:false};
+  const s=ss.conf, pg=CPAGES.find(p=>p.id===s.sel);
+  return `<div class="panel on">
+  <div class="sh"><div class="sh-eye">Step 8 of 9 — Auto-Published Documentation</div>
+  <div class="sh-ttl">Docs auto-push to <span style="color:#F2A900">Confluence</span> via MCP — <em>zero manual effort</em></div>
+  <div class="sh-sub">The doc-generator agent produces structured pages from ticket.md and test results. Published automatically. Jira → Done.</div></div>
+  <div class="sb"><div class="grid c53">
+    <div class="col">
+      <div style="background:#0052CC;border-radius:8px 8px 0 0;padding:7px 13px;display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <div style="width:18px;height:18px;border-radius:4px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:700;color:white">C</div>
+        <span class="bold f11" style="color:white">Confluence</span>
+        <span style="color:rgba(255,255,255,.35)">·</span>
+        <span style="font-size:9.5px;color:rgba(255,255,255,.6)">Complaints · R1 · COMP-042</span>
+        <div class="ml row gap6">
+          ${s.pub?`<span class="tag" style="background:rgba(40,200,60,.25);border-color:transparent;color:#88eea8">✓ Live</span>`:''}
+          <span class="tag" style="background:rgba(255,255,255,.1);border-color:transparent;color:rgba(255,255,255,.55)">doc-generator v1.2.0</span>
+        </div>
+      </div>
+      <div style="flex:1;min-height:0;overflow:auto;background:white;border:1px solid rgba(0,82,204,.08);border-top:none;border-radius:0 0 8px 8px;padding:18px">${pg.html}</div>
+    </div>
+    <div class="col">
+      <div class="lbl mb4">Generated pages</div>
+      ${CPAGES.map(p=>`<button class="selb${s.sel===p.id?' on':''} mb4" onclick="selConf('${p.id}')">
+        <div class="row gap8"><span style="color:${s.sel===p.id?'var(--p)':'var(--t2)'}">${p.ico}</span><span class="bold f10 t0">${p.lbl}</span>${s.pub?`<span class="ml tg">${I.chk}</span>`:''}</div>
+      </button>`).join('')}
+      <div class="card mt8 sh0">
+        <div class="bold f8 upper t2 mb6">Publish via MCP</div>
+        <code class="f8 t2 mono mb8" style="display:block">mcp__confluence__create_page</code>
+        ${s.pub
+          ?`<div>${CPAGES.map(p=>`<div class="row gap6 f9 tg mb4">${I.chk}&nbsp;${p.lbl}</div>`).join('')}<div class="divider mt6 mb6"></div><div class="f9 t1">Jira COMP-042 → <strong class="tg">Done</strong></div></div>`
+          :s.pbing
+            ?`<div class="row gap8 f9 t2"><div class="sp"></div>Publishing…</div>`
+            :`<button class="btn btn-p w100" style="background:#F2A900" onclick="pubConf()">Publish all pages</button>`}
+      </div>
+      <div class="cv-pur grow">
+        <div class="lbl mb6">What just happened</div>
+        <div class="f9 t1" style="line-height:1.6">The doc-generator agent read ticket.md and test results, then structured 3 Confluence pages and 1 user guide — each targeted at a different audience. Published via MCP in a single call.</div>
+      </div>
+    </div>
+  </div></div>
+  ${foot('← Back','Deployed ✓ — See Learnings')}</div>`;
+}
+window.selConf=id=>{ss.conf.sel=id;render();};
+window.pubConf=()=>{ss.conf.pbing=true;render();setTimeout(()=>{ss.conf.pbing=false;ss.conf.pub=true;render();},1300);};
+
+/* ════════════════════════════════════════════════
+   STEP 9 — DONE
+   ════════════════════════════════════════════════ */
+function renderDone(){
+  const lessons=[
+    {f:'lessons/apex-patterns.md',t:'Null-guard on Case.Priority — not required in schema',v:'Gate 2'},
+    {f:'lessons/apex-patterns.md',t:'Static SOQL initialisers need null-guard for test context',v:'Gate 1'},
+    {f:'lessons/test-patterns.md',t:'Negative tests must assert exact default queue Id',v:'Gate 3'},
+    {f:'context/domain-model.md',t:'Account.VIP_Client__c overrides all queue assignment',v:'UAT'},
+  ];
+  return `<div class="panel on">
+  <div class="sh"><div class="sh-eye">Step 9 of 9 — Deployed</div>
+  <div class="sh-ttl">COMP-042 is live. The engine is <em>smarter</em> than it was this morning.</div>
+  <div class="sh-sub">One story. Six outputs. Three human gates. Four lessons encoded. Zero documentation effort. The next story starts from a stronger baseline.</div></div>
+  <div class="sb"><div class="grid c3">
+    <div class="col">
+      <div class="lbl mb4">Copado pipeline — all green</div>
+      <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
+        ${[['PR merge → Copado triggered','14:32'],['PMD static analysis','14:33'],['Validate-only deploy to QA','14:35'],['Apex test run (6 methods)','14:36'],['Back-promotion to UAT','14:38'],['Smoke scripts executed','14:40'],['Deploy to Production','14:42']].map(([t,ts],i)=>`
+          <div class="dstep au d${Math.min(i+1,6)}"><span class="tg sh0">${I.chk}</span><span class="f9 t1" style="flex:1">${t}</span><span class="f8 t3 mono">${ts}</span></div>`).join('')}
+      </div>
+      <div class="cv-pur mta"><div class="bold f10 tp">Jira COMP-042 → Done</div><div class="f9 t1 mt4">Status updated via Jira MCP. 3 Confluence pages live.</div></div>
+    </div>
+    <div class="col">
+      <div class="lbl mb4">What was delivered</div>
+      ${[{cat:'Code',col:'var(--p)',items:['ComplaintsAllocationHandler.cls · 187 lines','FLS/CRUD enforced · with sharing · ADR-001/004']},{cat:'Tests',col:'var(--tl)',items:['6 test methods · 96% line coverage','AC-1 to AC-4 + NFR-1 + VIP-1 · bulk at 200']},{cat:'Security',col:'var(--r)',items:['OWASP audit passed · FLS/CRUD reviewed','1 advisory encoded into lessons/']},{cat:'Docs',col:'#F2A900',items:['Tech Design · Test Traceability · User Guide']}].map(d=>`
+        <div class="card sh0">
+          <div class="bold f8 upper mb6" style="color:${d.col}">${d.cat}</div>
+          ${d.items.map(i=>`<div class="f9 t1 mb4">· ${i}</div>`).join('')}
+        </div>`).join('')}
+      <div class="card sh0" style="background:var(--s2)">
+        <div class="igrid c2">
+          <div style="text-align:center"><div class="f8 t2 mb4">Traditional</div><div class="big-n t3">3–5d</div></div>
+          <div style="text-align:center;background:var(--p8);border-radius:6px;padding:8px"><div class="f8 tpd bold mb4">This story</div><div class="big-n tp">~4h</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="col scroll">
+      <div class="lbl mb4" style="color:#F2A900">What the engine learned</div>
+      ${lessons.map((l,i)=>`<div class="card sh0 as d${i+1}" style="border-color:rgba(242,169,0,.16)">
+        <div class="row wrap gap6 mb6"><code class="f8 mono" style="color:#F2A900">${l.f}</code><span class="tag tg-a">${l.v}</span></div>
+        <div class="f9 t1" style="line-height:1.5">${l.t}</div>
+      </div>`).join('')}
+      <div class="cv-pur mta">
+        <div class="bold f10 tp">Sprint-end: /retrospective</div>
+        <div class="f9 t1 mt4" style="line-height:1.5">These 4 lessons join Sprint 1-3's 23 principles. Patterns verified 5+ times promote into skills. Next story starts smarter.</div>
+      </div>
+    </div>
+  </div></div>
+  ${foot('← Back','↺ New Story',false,false,true)}</div>`;
+}
+
+/* ── RENDER DISPATCHER ── */
+const renderers={jira:renderJira,mcp:renderMcp,layers:renderLayers,spec:renderSpec,build:renderBuild,gates:renderGates,faults:renderFaults,confluence:renderConfluence,done:renderDone};
+function render(){
+  document.getElementById('stage').innerHTML=(renderers[cur]||renderJira)();
+  renderNav();
+}
+render();
+</script>
+</body>
+</html>
